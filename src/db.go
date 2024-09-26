@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -13,31 +12,49 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var db *mongo.Database
+var mongoClient *mongo.Client
 
-func mongoDbQueryTest() {
+func GetUser(filter bson.D) (User, error) {
 	var result bson.M
-	err := db.Collection("movies").
-		FindOne(context.TODO(), bson.D{{"title", "Back to the Future"}}).
+	err := mongoClient.
+		Database("GoCharge").
+		Collection("Users").
+		FindOne(context.TODO(), filter).
 		Decode(&result)
-
-	if err == mongo.ErrNoDocuments {
-		fmt.Printf("No document was found with title")
-		return
-	}
 	if err != nil {
-		panic(err)
+		return User{}, err
 	}
 
-	jsonData, err := json.MarshalIndent(result, "", "    ")
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("%s\n", jsonData)
+	return FromMongoDoc[User](result)
 }
 
-func initMongoDb() {
+func CreateUser(username string, password string, email string, role string) (string, error) {
+	new_user := NewUser{
+		Username:           username,
+		Password:           password,
+		Email:              email,
+		Role:               role,
+		PhotoURL:           "",
+		FavoriteStationIDs: []string{},
+	}
+
+	new_user_doc, err := ToMongoDoc(new_user)
+	if err != nil {
+		return "", err
+	}
+
+	result, err := mongoClient.
+		Database("GoCharge").
+		Collection("Users").
+		InsertOne(context.TODO(), new_user_doc)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprint(result.InsertedID), nil
+}
+
+func InitMongoDb() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("No .env file found")
 	}
@@ -47,17 +64,22 @@ func initMongoDb() {
 		log.Fatal("Set your 'MONGODB_URI' environment variable. ")
 	}
 
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
+	serverAPI := options.ServerAPI(options.ServerAPIVersion1)
+	opts := options.Client().ApplyURI(uri).SetServerAPIOptions(serverAPI)
+
+	client, err := mongo.Connect(context.TODO(), opts)
 	if err != nil {
 		panic(err)
 	}
 
-	defer func() {
-		err := client.Disconnect(context.TODO())
-		if err != nil {
-			panic(err)
-		}
-	}()
+	userIndexes := client.Database("GoCharge").
+		Collection("Users").
+		Indexes()
 
-	db = client.Database("sample_mflix")
+	userIndexes.CreateOne(context.TODO(), mongo.IndexModel{
+		Keys:    bson.D{{"username", 1}},
+		Options: options.Index().SetUnique(true),
+	})
+
+	mongoClient = client
 }
