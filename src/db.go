@@ -55,7 +55,7 @@ func CreateUser(username string, password string, email string, role string) (st
 }
 
 func InitMongoDb() {
-	if err := godotenv.Load(); err != nil {
+	if err := godotenv.Load("../.env"); err != nil {
 		log.Fatal("No .env file found")
 	}
 
