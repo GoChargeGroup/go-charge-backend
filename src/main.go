@@ -9,12 +9,17 @@ import (
 func main() {
 	InitMongoDb()
 
-	r := gin.Default()
-	// define the routes
-	r.GET("/signup", HandleSignup)
-	r.GET("/login", HandleLogin)
-	r.GET("/password-reset", HandlePasswordReset)
-	err := r.Run(":8083")
+	router := gin.Default()
+	router.GET("/signup", HandleSignup)
+	router.GET("/login", HandleLogin)
+	router.GET("/password-reset", HandlePasswordReset)
+
+	user_router := router.Group("/user")
+	user_router.Use(AuthMiddleware)
+	user_router.POST("/edit-account", HandleEditAccount)
+	user_router.POST("/delete-account", HandleDeleteAccount)
+
+	err := router.Run(":8083")
 	if err != nil {
 		log.Fatalf("impossible to start server: %s", err)
 	}

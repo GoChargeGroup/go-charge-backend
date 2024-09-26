@@ -54,6 +54,18 @@ func CreateUser(username string, password string, email string, role string) (st
 	return fmt.Sprint(result.InsertedID), nil
 }
 
+func UpdateOne(collection string, filter bson.D, update bson.D) (string, error) {
+	result, err := mongoClient.
+		Database("GoCharge").
+		Collection(collection).
+		UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprint(result.UpsertedID), nil
+}
+
 func InitMongoDb() {
 	if err := godotenv.Load("../.env"); err != nil {
 		log.Fatal("No .env file found")
