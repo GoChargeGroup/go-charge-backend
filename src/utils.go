@@ -91,7 +91,7 @@ func GenAndSetJWT(c *gin.Context, id string) error {
 		return err
 	}
 
-	c.Request.Response.Header.Set("token", jwt_token_str)
+	c.Header("Authorization", "Bearer "+jwt_token_str)
 	return nil
 }
 
