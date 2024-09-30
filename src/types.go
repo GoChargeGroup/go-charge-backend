@@ -1,21 +1,35 @@
 package main
 
+import "github.com/golang-jwt/jwt/v5"
+
+type JWTClaims struct {
+	jwt.RegisteredClaims
+	User UserClaim `json:"user"`
+}
+
+type UserClaim struct {
+	ID       string `json:"_id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+}
+
 type NewUser struct {
-	FavoriteStationIDs []string `json:"favorite_station_ids"`
-	Username           string   `json:"username"`
-	Password           string   `json:"password"`
-	Email              string   `json:"email"`
-	Role               string   `json:"role"`
-	PhotoURL           string   `json:"photo_url"`
+	FavoriteStationIDs []string `json:"favorite_station_ids" bson:"favorite_station_ids"`
+	Username           string   `json:"username" bson:"username"`
+	Password           string   `json:"password" bson:"password"`
+	Email              string   `json:"email" bson:"email"`
+	Role               string   `json:"role" bson:"role"`
+	PhotoURL           string   `json:"photo_url" bson:"photo_url"`
 }
 
 type User struct {
-	ID                 string   `json:"_id"`
-	FavoriteStationIDs []string `json:"favorite_station_ids"`
-	Username           string   `json:"username"`
-	Email              string   `json:"email"`
-	Role               string   `json:"role"`
-	PhotoURL           string   `json:"photo_url"`
+	ID                 string   `json:"_id" bson:"_id"`
+	FavoriteStationIDs []string `json:"favorite_station_ids" bson:"favorite_station_ids"`
+	Username           string   `json:"username" bson:"username"`
+	Email              string   `json:"email" bson:"email"`
+	Role               string   `json:"role" bson:"role"`
+	PhotoURL           string   `json:"photo_url" bson:"photo_url"`
 }
 
 type Station struct {

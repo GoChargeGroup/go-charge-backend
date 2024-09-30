@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -14,13 +15,14 @@ func HandleSignup(c *gin.Context) {
 		QPPair{"username", &username},
 		QPPair{"password", &password},
 		QPPair{"email", &email},
-		QPPair{"role", &role})
+		QPPair{"role", &role},
+	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	_, err = CreateUser(username, password, email, role)
+	userID, err := CreateUser(username, password, email, role)
 	if mongo.IsDuplicateKeyError(err) {
 		c.JSON(http.StatusConflict, "A user with this username already exists.")
 		return
@@ -30,13 +32,13 @@ func HandleSignup(c *gin.Context) {
 		return
 	}
 
-	user, err := GetUser(bson.D{{"username", username}})
+	user, err := GetUser(bson.D{{"_id", userID}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	GenAndSetJWT(c, user.ID)
+	GenAndSetJWT(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -57,7 +59,8 @@ func HandleLogin(c *gin.Context) {
 
 	user, err := GetUser(bson.D{
 		{"username", username},
-		{"password", password}})
+		{"password", password},
+	})
 	if err == mongo.ErrNoDocuments {
 		c.JSON(http.StatusNotFound, "User not found.")
 		return
@@ -67,7 +70,7 @@ func HandleLogin(c *gin.Context) {
 		return
 	}
 
-	GenAndSetJWT(c, user.ID)
+	GenAndSetJWT(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -77,28 +80,43 @@ func HandleLogin(c *gin.Context) {
 }
 
 func HandleEditAccount(c *gin.Context) {
-	var username, password, email, role string
-	err := ReadQueryParams(c,
+	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
+
+	var username, password, email string
+	err := ReadBody(c,
 		QPPair{"username", &username},
 		QPPair{"password", &password},
 		QPPair{"email", &email},
-		QPPair{"role", &role})
+	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	_, err = CreateUser(username, password, email, role)
-	if mongo.IsDuplicateKeyError(err) {
-		c.JSON(http.StatusConflict, "A user with this username already exists.")
-		return
-	}
+	userID, err := primitive.ObjectIDFromHex(userClaim.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	user, err := GetUser(bson.D{{"username", username}})
+	err = UpdateUser(
+		bson.D{
+			{"_id", userID},
+		},
+		bson.D{
+			{"$set", bson.D{
+				{"username", username},
+				{"password", password},
+				{"email", email},
+			}},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	user, err := GetUser(bson.D{{"_id", userID}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -108,36 +126,23 @@ func HandleEditAccount(c *gin.Context) {
 }
 
 func HandleDeleteAccount(c *gin.Context) {
-	var username, password, email, role string
-	err := ReadQueryParams(c,
-		QPPair{"username", &username},
-		QPPair{"password", &password},
-		QPPair{"email", &email},
-		QPPair{"role", &role})
-	if err != nil {
-		c.JSON(http.StatusBadRequest, err.Error())
-		return
-	}
+	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
 
-	_, err = CreateUser(username, password, email, role)
-	if mongo.IsDuplicateKeyError(err) {
-		c.JSON(http.StatusConflict, "A user with this username already exists.")
-		return
-	}
+	userID, err := primitive.ObjectIDFromHex(userClaim.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	user, err := GetUser(bson.D{{"username", username}})
+	err = DeleteUser(bson.D{{"_id", userID}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, "")
 }
 
 func HandlePasswordReset(c *gin.Context) {
-	c.JSON(http.StatusOK, 0)
+	c.JSON(http.StatusOK, "")
 }

@@ -2,33 +2,25 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var mongoClient *mongo.Client
 
-func GetUser(filter bson.D) (User, error) {
-	var result bson.M
-	err := mongoClient.
-		Database("GoCharge").
-		Collection("Users").
-		FindOne(context.TODO(), filter).
-		Decode(&result)
-	if err != nil {
-		return User{}, err
-	}
+// USER WRAPPER FUNCTIONS
 
-	return FromMongoDoc[User](result)
+func GetUser(filter bson.D) (User, error) {
+	return GetOne[User]("Users", filter)
 }
 
-func CreateUser(username string, password string, email string, role string) (string, error) {
+func CreateUser(username string, password string, email string, role string) (primitive.ObjectID, error) {
 	new_user := NewUser{
 		Username:           username,
 		Password:           password,
@@ -37,33 +29,55 @@ func CreateUser(username string, password string, email string, role string) (st
 		PhotoURL:           "",
 		FavoriteStationIDs: []string{},
 	}
-
-	new_user_doc, err := ToMongoDoc(new_user)
-	if err != nil {
-		return "", err
-	}
-
-	result, err := mongoClient.
-		Database("GoCharge").
-		Collection("Users").
-		InsertOne(context.TODO(), new_user_doc)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprint(result.InsertedID), nil
+	return CreateOne("Users", new_user)
 }
 
-func UpdateOne(collection string, filter bson.D, update bson.D) (string, error) {
+func UpdateUser(filter bson.D, update bson.D) error {
+	return UpdateOne("Users", filter, update)
+}
+
+func DeleteUser(filter bson.D) error {
+	return DeleteOne("Users", filter)
+}
+
+// DB WRAPPER FUNCTIONS
+
+func GetOne[T interface{}](collection string, filter bson.D) (T, error) {
+	var result T
+	err := mongoClient.
+		Database("GoCharge").
+		Collection(collection).
+		FindOne(context.TODO(), filter).
+		Decode(&result)
+	return result, err
+}
+
+func CreateOne(collection string, document interface{}) (primitive.ObjectID, error) {
 	result, err := mongoClient.
 		Database("GoCharge").
 		Collection(collection).
-		UpdateOne(context.TODO(), filter, update)
+		InsertOne(context.TODO(), document)
 	if err != nil {
-		return "", err
+		return primitive.ObjectID{}, err
 	}
 
-	return fmt.Sprint(result.UpsertedID), nil
+	return result.InsertedID.(primitive.ObjectID), nil
+}
+
+func UpdateOne(collection string, filter bson.D, update bson.D) error {
+	_, err := mongoClient.
+		Database("GoCharge").
+		Collection(collection).
+		UpdateOne(context.TODO(), filter, update)
+	return err
+}
+
+func DeleteOne(collection string, filter bson.D) error {
+	_, err := mongoClient.
+		Database("GoCharge").
+		Collection(collection).
+		DeleteOne(context.TODO(), filter)
+	return err
 }
 
 func InitMongoDb() {

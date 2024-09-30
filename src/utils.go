@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -30,9 +32,20 @@ func ReadQueryParams(c *gin.Context, key_vars ...QPPair) error {
 }
 
 func ReadBody(c *gin.Context, key_vars ...QPPair) error {
+	bodyJson, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return errors.New("invalid request body")
+	}
+
+	jsonMap := map[string]interface{}{}
+	err = json.Unmarshal([]byte(bodyJson), &jsonMap)
+	if err != nil {
+		return errors.New("invalid request body")
+	}
+
 	for _, key_var := range key_vars {
-		value, exists := c.Get(key_var._0)
-		if !exists {
+		value, ok := jsonMap[key_var._0]
+		if !ok {
 			return errors.New("no " + key_var._0 + " provided")
 		}
 		*key_var._1 = fmt.Sprint(value)
@@ -46,63 +59,41 @@ func Unpack(s []string, vars ...*string) {
 	}
 }
 
-type Item struct {
-	Data map[string]interface{} `bson:"data"`
-}
-
-func ToMongoDoc(val any) (any, error) {
-	json_doc, err := json.Marshal(val)
-	if err != nil {
-		return nil, err
-	}
-
-	item := Item{}
-	err = json.Unmarshal(json_doc, &item.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	return item.Data, nil
-}
-
-func FromMongoDoc[T any](val primitive.M) (T, error) {
-	var result T
-
-	json_data, err := json.Marshal(val)
-	if err != nil {
-		return result, err
-	}
-
-	err = json.Unmarshal(json_data, &result)
-	if err != nil {
-		return result, err
-	}
-
-	return result, nil
+func ID2Str(id any) string {
+	return id.(primitive.ObjectID).Hex()
 }
 
 const JWT_KEY = "hi mom"
+const JWT_PREFIX = "Bearer "
+const JWT_HEADER = "Authorization"
+const MW_USER_KEY = "user"
 
-func GenAndSetJWT(c *gin.Context, id string) error {
-	jwt_token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"id": id})
+func GenAndSetJWT(c *gin.Context, user User) error {
+	claims := JWTClaims{
+		jwt.RegisteredClaims{},
+		UserClaim{
+			user.ID,
+			user.Username,
+			user.Email,
+			user.Role,
+		},
+	}
+	jwt_token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	jwt_token_str, err := jwt_token.SignedString([]byte(JWT_KEY))
 	if err != nil {
 		return err
 	}
 
-	c.Header("Authorization", "Bearer "+jwt_token_str)
+	c.Header(JWT_HEADER, JWT_PREFIX+jwt_token_str)
 	return nil
 }
 
 func AuthMiddleware(c *gin.Context) {
-	jwt_token_str := c.GetHeader("token")
+	auth_str := c.GetHeader(JWT_HEADER)
+	jwt_token_str := strings.Replace(auth_str, JWT_PREFIX, "", 1)
 
-	var user_id string
-	ReadBody(c, QPPair{"id", &user_id})
-	claims := jwt.MapClaims{"id": user_id}
-
-	token, err := jwt.ParseWithClaims(jwt_token_str, &claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(jwt_token_str, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(JWT_KEY), nil
 	})
 	if err != nil {
@@ -114,5 +105,7 @@ func AuthMiddleware(c *gin.Context) {
 		return
 	}
 
+	claims := token.Claims.(*JWTClaims)
+	c.Set(MW_USER_KEY, claims.User)
 	c.Next()
 }
