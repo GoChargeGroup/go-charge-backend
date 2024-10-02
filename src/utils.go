@@ -90,22 +90,48 @@ func GenAndSetJWT(c *gin.Context, user User) error {
 }
 
 func AuthMiddleware(c *gin.Context) {
-	auth_str := c.GetHeader(JWT_HEADER)
-	jwt_token_str := strings.Replace(auth_str, JWT_PREFIX, "", 1)
+    authHeader := c.GetHeader(JWT_HEADER)
+    if authHeader == "" {
+        c.JSON(http.StatusUnauthorized, "Authorization header is missing")
+        c.Abort()
+        return
+    }
 
-	token, err := jwt.ParseWithClaims(jwt_token_str, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(JWT_KEY), nil
-	})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-	if !token.Valid {
-		c.JSON(http.StatusUnauthorized, "Invalid token.")
-		return
-	}
+   
+    tokenStr := strings.TrimPrefix(authHeader, JWT_PREFIX)
+    
+    if tokenStr == authHeader { 
+        c.JSON(http.StatusUnauthorized, "Invalid token format")
+        c.Abort()
+        return
+    }
 
-	claims := token.Claims.(*JWTClaims)
-	c.Set(MW_USER_KEY, claims.User)
-	c.Next()
+  
+    token, err := jwt.ParseWithClaims(tokenStr, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte(JWT_KEY), nil
+    })
+
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, "Failed to parse token")
+        c.Abort()
+        return
+    }
+
+    if !token.Valid {
+        c.JSON(http.StatusUnauthorized, "Invalid token")
+        c.Abort()
+        return
+    }
+
+   
+    claims, ok := token.Claims.(*JWTClaims)
+    if !ok || claims.User.ID == "" {
+        c.JSON(http.StatusUnauthorized, "Invalid token claims")
+        c.Abort()
+        return
+    }
+
+    c.Set(MW_USER_KEY, claims.User) 
+    c.Next() 
 }
+

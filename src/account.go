@@ -82,10 +82,9 @@ func HandleLogin(c *gin.Context) {
 func HandleEditAccount(c *gin.Context) {
 	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
 
-	var username, password, email string
+	var username, email string
 	err := ReadBody(c,
 		QPPair{"username", &username},
-		QPPair{"password", &password},
 		QPPair{"email", &email},
 	)
 	if err != nil {
@@ -106,7 +105,6 @@ func HandleEditAccount(c *gin.Context) {
 		bson.D{
 			{"$set", bson.D{
 				{"username", username},
-				{"password", password},
 				{"email", email},
 			}},
 		},
