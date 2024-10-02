@@ -24,7 +24,7 @@ func HandleSignup(c *gin.Context) {
 
 	userID, err := CreateUser(username, password, email, role)
 	if mongo.IsDuplicateKeyError(err) {
-		c.JSON(http.StatusConflict, "A user with this username already exists.")
+		c.JSON(http.StatusConflict, "A user with this username or email already exists.")
 		return
 	}
 	if err != nil {
@@ -62,7 +62,7 @@ func HandleLogin(c *gin.Context) {
 		{"password", password},
 	})
 	if err == mongo.ErrNoDocuments {
-		c.JSON(http.StatusNotFound, "User not found.")
+		c.JSON(http.StatusNotFound, "Incorrect username or password.")
 		return
 	}
 	if err != nil {
@@ -120,6 +120,13 @@ func HandleEditAccount(c *gin.Context) {
 		return
 	}
 
+	// reset jwt header since username and email might have changed.
+	err = GenAndSetJWT(c, user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	c.JSON(http.StatusOK, user)
 }
 
@@ -142,5 +149,70 @@ func HandleDeleteAccount(c *gin.Context) {
 }
 
 func HandlePasswordReset(c *gin.Context) {
-	c.JSON(http.StatusOK, "")
+	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
+
+	var password string
+	err := ReadBody(c, QPPair{"password", &password})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	userID, err := primitive.ObjectIDFromHex(userClaim.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = UpdateUser(
+		bson.D{
+			{"_id", userID},
+		},
+		bson.D{
+			{"$set", bson.D{
+				{"password", password},
+			}},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	user, err := GetUser(bson.D{{"_id", userID}})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+func HandlePasswordResetRequest(c *gin.Context) {
+	var email string
+	err := ReadBody(c, QPPair{"email", &email})
+	if err != nil {
+		c.JSON(http.StatusNotFound, "Email not provided.")
+		return
+	}
+
+	user, err := GetUser(bson.D{{"email", email}})
+	if err != nil || user.Email == "" {
+		c.JSON(http.StatusNotFound, err.Error())
+		return
+	}
+
+	msg, err := GetResetPasswordMessageBody(user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = SendEmail(user, msg)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, msg)
 }

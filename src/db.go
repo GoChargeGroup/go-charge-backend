@@ -80,6 +80,20 @@ func DeleteOne(collection string, filter bson.D) error {
 	return err
 }
 
+func InitIndices() {
+	userIndexes := mongoClient.Database("GoCharge").
+		Collection("Users").
+		Indexes()
+	userIndexes.CreateOne(context.TODO(), mongo.IndexModel{
+		Keys:    bson.D{{"username", 1}},
+		Options: options.Index().SetUnique(true),
+	})
+	userIndexes.CreateOne(context.TODO(), mongo.IndexModel{
+		Keys:    bson.D{{"email", 1}},
+		Options: options.Index().SetUnique(true),
+	})
+}
+
 func InitMongoDb() {
 	if err := godotenv.Load("../.env"); err != nil {
 		log.Fatal("No .env file found")
@@ -98,14 +112,7 @@ func InitMongoDb() {
 		panic(err)
 	}
 
-	userIndexes := client.Database("GoCharge").
-		Collection("Users").
-		Indexes()
-
-	userIndexes.CreateOne(context.TODO(), mongo.IndexModel{
-		Keys:    bson.D{{"username", 1}},
-		Options: options.Index().SetUnique(true),
-	})
-
 	mongoClient = client
+
+	InitIndices()
 }
