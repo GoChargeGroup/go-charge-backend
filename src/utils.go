@@ -28,6 +28,22 @@ func ReadQueryParams(c *gin.Context, key_vars ...QPPair) error {
 	return nil
 }
 
+func ReadBodyToStruct[T any](c *gin.Context) (T, error) {
+	var bodyStruct T
+
+	bodyJson, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return bodyStruct, errors.New("invalid request body")
+	}
+
+	err = json.Unmarshal([]byte(bodyJson), &bodyStruct)
+	if err != nil {
+		return bodyStruct, errors.New("invalid request body")
+	}
+
+	return bodyStruct, nil
+}
+
 func ReadBody(c *gin.Context, key_vars ...QPPair) error {
 	bodyJson, err := io.ReadAll(c.Request.Body)
 	if err != nil {

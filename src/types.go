@@ -1,6 +1,9 @@
 package main
 
-import "github.com/golang-jwt/jwt/v5"
+import (
+	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type JWTClaims struct {
 	jwt.RegisteredClaims
@@ -32,26 +35,57 @@ type User struct {
 	PhotoURL           string   `json:"photo_url" bson:"photo_url"`
 }
 
+type FindStationsInput struct {
+	Radius      float64    `json:"radius" bson:"radius"`
+	K           int64      `json:"k" bson:"k"`
+	Coordinates [2]float64 `json:"coordinates" bson:"coordinates"`
+}
+
+type FindStationsOutput struct {
+	Stations []Station `json:"stations" bson:"stations"`
+}
+
+type NewStationInput struct {
+	OwnerID     string            `json:"owner_id" bson:"owner_id"`
+	Name        string            `json:"name" bson:"name"`
+	Description string            `json:"description" bson:"description"`
+	Coordinates [2]float64        `json:"coordinates" bson:"coordinates"`
+	Chargers    []NewChargerInput `json:"chargers" bson:"chargers"`
+}
+
+type NewStationOutput struct {
+	Station  Station   `json:"station" bson:"station"`
+	Chargers []Charger `json:"chargers" bson:"chargers"`
+}
+
 type Station struct {
-	ID          string     `json:"id"`
-	OwnerID     string     `json:"owner_id"`
-	PictureURLs []string   `json:"picture_urls"`
-	Name        string     `json:"name"`
-	Description string     `json:"description"`
-	Coords      [2]float32 `json:"coords"`
-	IsPublic    bool       `json:"is_public"`
+	ID          primitive.ObjectID `json:"_id" bson:"_id"`
+	OwnerID     primitive.ObjectID `json:"owner_id" bson:"owner_id"`
+	PictureURLs []string           `json:"picture_urls" bson:"picture_urls"`
+	Name        string             `json:"name" bson:"name"`
+	Description string             `json:"description" bson:"description"`
+	Coordinates [2]float64         `json:"coordinates" bson:"coordinates"`
+	IsPublic    bool               `json:"is_public" bson:"is_public"`
+}
+
+type NewChargerInput struct {
+	Name           string  `json:"name" bson:"name"`
+	Description    string  `json:"description" bson:"description"`
+	KWhTypesId     string  `json:"kWh_types_id" bson:"kWh_types_id"`
+	ChargerTypesId string  `json:"charger_types_id" bson:"charger_types_id"`
+	Price          float64 `json:"price" bson:"price"`
 }
 
 type Charger struct {
-	ID             string  `json:"id"`
-	StationID      string  `json:"station_id"`
-	Name           string  `json:"name"`
-	Description    string  `json:"description"`
-	KWhTypesId     string  `json:"kWh_types_id"`
-	ChargerTypesId string  `json:"charger_types_id"`
-	Status         string  `json:"status"`
-	Price          float32 `json:"price"`
-	TotalPayments  float32 `json:"total_payments"`
+	ID             primitive.ObjectID `json:"_id" bson:"_id"`
+	StationID      primitive.ObjectID `json:"station_id" bson:"station_id"`
+	Name           string             `json:"name" bson:"name"`
+	Description    string             `json:"description" bson:"description"`
+	KWhTypesId     string             `json:"kWh_types_id" bson:"kWh_types_id"`
+	ChargerTypesId string             `json:"charger_types_id" bson:"charger_types_id"`
+	Status         string             `json:"status" bson:"status"`
+	Price          float64            `json:"price" bson:"price"`
+	TotalPayments  float64            `json:"total_payments" bson:"total_payments"`
 }
 
 type Log struct {
@@ -61,7 +95,7 @@ type Log struct {
 	StartTimestamp uint64  `json:"start_timestamp"`
 	EndTimestamp   uint64  `json:"end_timestamp"`
 	PaymentAmount  string  `json:"payment_amount"`
-	PowerUsed      float32 `json:"power_used"`
+	PowerUsed      float64 `json:"power_used"`
 }
 
 type StationRequest struct {

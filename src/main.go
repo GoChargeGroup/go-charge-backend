@@ -22,6 +22,9 @@ func main() {
 	user_router.POST("/delete-account", HandleDeleteAccount)
 	user_router.POST("/password-reset", HandlePasswordReset)
 
+	user_router.POST("/request-station", HandleStationRequest)
+	user_router.POST("/closest-stations", HandleClosestStations)
+
 	err := router.Run(":8083")
 	if err != nil {
 		log.Fatalf("impossible to start server: %s", err)

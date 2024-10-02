@@ -9,6 +9,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+const USER_ROLE = "user"
+const OWNER_ROLE = "owner"
+
 func HandleSignup(c *gin.Context) {
 	var username, password, email, role string
 	err := ReadQueryParams(c,
@@ -19,6 +22,10 @@ func HandleSignup(c *gin.Context) {
 	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	if role != USER_ROLE && role != OWNER_ROLE {
+		c.JSON(http.StatusBadRequest, "Role must be 'user' or 'owner'")
 		return
 	}
 
