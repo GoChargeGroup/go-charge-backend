@@ -24,7 +24,7 @@ func HandleSignup(c *gin.Context) {
 
 	userID, err := CreateUser(username, password, email, role)
 	if mongo.IsDuplicateKeyError(err) {
-		c.JSON(http.StatusConflict, "A user with this username or email already exists.")
+		c.JSON(http.StatusConflict, "A user with this username or email already exists")
 		return
 	}
 	if err != nil {
@@ -38,7 +38,7 @@ func HandleSignup(c *gin.Context) {
 		return
 	}
 
-	GenAndSetJWT(c, user)
+	err = GenAndSetJWT(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -62,7 +62,7 @@ func HandleLogin(c *gin.Context) {
 		{"password", password},
 	})
 	if err == mongo.ErrNoDocuments {
-		c.JSON(http.StatusNotFound, "Incorrect username or password.")
+		c.JSON(http.StatusNotFound, "Incorrect username or password")
 		return
 	}
 	if err != nil {
@@ -70,7 +70,7 @@ func HandleLogin(c *gin.Context) {
 		return
 	}
 
-	GenAndSetJWT(c, user)
+	err = GenAndSetJWT(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -192,7 +192,7 @@ func HandlePasswordResetRequest(c *gin.Context) {
 	var email string
 	err := ReadBody(c, QPPair{"email", &email})
 	if err != nil {
-		c.JSON(http.StatusNotFound, "Email not provided.")
+		c.JSON(http.StatusNotFound, "Email not provided")
 		return
 	}
 
