@@ -46,11 +46,12 @@ type FindStationsOutput struct {
 }
 
 type NewStationInput struct {
-	OwnerID     string            `json:"owner_id" bson:"owner_id"`
-	Name        string            `json:"name" bson:"name"`
-	Description string            `json:"description" bson:"description"`
-	Coordinates [2]float64        `json:"coordinates" bson:"coordinates"`
-	Chargers    []NewChargerInput `json:"chargers" bson:"chargers"`
+	OwnerID          string            `json:"owner_id" bson:"owner_id"`
+	Name             string            `json:"name" bson:"name"`
+	Description      string            `json:"description" bson:"description"`
+	Coordinates      [2]float64        `json:"coordinates" bson:"coordinates"`
+	OperationalHours [7][2]int64       `json:"operational_hours" bson:"operational_hours"`
+	Chargers         []NewChargerInput `json:"chargers" bson:"chargers"`
 }
 
 type NewStationOutput struct {
@@ -59,13 +60,14 @@ type NewStationOutput struct {
 }
 
 type Station struct {
-	ID          primitive.ObjectID `json:"_id" bson:"_id"`
-	OwnerID     primitive.ObjectID `json:"owner_id" bson:"owner_id"`
-	PictureURLs []string           `json:"picture_urls" bson:"picture_urls"`
-	Name        string             `json:"name" bson:"name"`
-	Description string             `json:"description" bson:"description"`
-	Coordinates [2]float64         `json:"coordinates" bson:"coordinates"`
-	IsPublic    bool               `json:"is_public" bson:"is_public"`
+	ID               primitive.ObjectID `json:"_id" bson:"_id"`
+	OwnerID          primitive.ObjectID `json:"owner_id" bson:"owner_id"`
+	PictureURLs      []string           `json:"picture_urls" bson:"picture_urls"`
+	Name             string             `json:"name" bson:"name"`
+	Description      string             `json:"description" bson:"description"`
+	Coordinates      [2]float64         `json:"coordinates" bson:"coordinates"`
+	IsPublic         bool               `json:"is_public" bson:"is_public"`
+	OperationalHours [7][2]int64        `json:"operational_hours" bson:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
 }
 
 type NewChargerInput struct {
@@ -102,8 +104,8 @@ type Session struct {
 	ID             primitive.ObjectID `json:"_id"`
 	UserID         primitive.ObjectID `json:"user_id"`
 	ChargerID      primitive.ObjectID `json:"charger_id"`
-	StartTimestamp int64              `json:"start_timestamp"`
-	EndTimestamp   int64              `json:"end_timestamp"`
+	StartTimestamp int64              `json:"start_timestamp"` // start unix timestamp
+	EndTimestamp   int64              `json:"end_timestamp"`   // end unix timestamp
 	PaymentAmount  float64            `json:"payment_amount"`
 	PowerUsed      float64            `json:"power_used"`
 }

@@ -80,6 +80,12 @@ func HandleClosestStations(c *gin.Context) {
 		return
 	}
 
+	// current_time := time.Now().Unix()
+	// current_day_epoch := current_time % (60 * 60 * 24)
+	// day_of_week := strconv.Itoa(int(time.Now().Weekday()))
+	// start_key := "operational_hours." + day_of_week + ".0"
+	// end_key := "operational_hours." + day_of_week + ".1"
+
 	mongoDBHQ := bson.D{
 		{"type", "Point"},
 		{"coordinates", query_data.Coordinates},
@@ -91,6 +97,9 @@ func HandleClosestStations(c *gin.Context) {
 				{"$maxDistance", query_data.Radius},
 			}},
 		}},
+		{"is_public", true},
+		// {start_key, bson.D{{"$lt", current_day_epoch}}},
+		// {end_key, bson.D{{"$gt", current_day_epoch}}},
 	}, query_data.K)
 
 	result := FindStationsOutput{stations}
