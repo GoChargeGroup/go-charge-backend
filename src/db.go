@@ -14,6 +14,12 @@ import (
 
 var mongoClient *mongo.Client
 
+const SESSION_COLL = "Sessions"
+const STATION_COLL = "Stations"
+const USER_COLL = "Users"
+const CHARGER_COLL = "Chargers"
+const CHARGER_REVIEWS = "ChargerReviews"
+
 // STATION WRAPPER FUNCTIONS
 
 func CreateStation(owner_id primitive.ObjectID, name string, description string, coordinates [2]float64) (primitive.ObjectID, error) {
@@ -26,15 +32,15 @@ func CreateStation(owner_id primitive.ObjectID, name string, description string,
 		Coordinates: coordinates,
 		IsPublic:    false,
 	}
-	return CreateOne("Stations", new_station)
+	return CreateOne(STATION_COLL, new_station)
 }
 
 func GetStation(filter bson.D) (Station, error) {
-	return GetOne[Station]("Stations", filter)
+	return GetOne[Station](STATION_COLL, filter)
 }
 
 func GetStations(filter bson.D, k int64) ([]Station, error) {
-	return GetAll[Station]("Stations", filter, k)
+	return GetAll[Station](STATION_COLL, filter, k)
 }
 
 // STATION WRAPPER FUNCTIONS
@@ -50,17 +56,17 @@ func CreateCharger(station_id primitive.ObjectID, name string, description strin
 		Price:          price,
 		TotalPayments:  0,
 	}
-	return CreateOne("Chargers", new_charger)
+	return CreateOne(CHARGER_COLL, new_charger)
 }
 
 func GetCharger(filter bson.D) (Charger, error) {
-	return GetOne[Charger]("Chargers", filter)
+	return GetOne[Charger](CHARGER_COLL, filter)
 }
 
 // USER WRAPPER FUNCTIONS
 
 func GetUser(filter bson.D) (User, error) {
-	return GetOne[User]("Users", filter)
+	return GetOne[User](USER_COLL, filter)
 }
 
 func CreateUser(username string, password string, email string, role string) (primitive.ObjectID, error) {
@@ -72,15 +78,15 @@ func CreateUser(username string, password string, email string, role string) (pr
 		PhotoURL:           "",
 		FavoriteStationIDs: []string{},
 	}
-	return CreateOne("Users", new_user)
+	return CreateOne(USER_COLL, new_user)
 }
 
 func UpdateUser(filter bson.D, update bson.D) error {
-	return UpdateOne("Users", filter, update)
+	return UpdateOne(USER_COLL, filter, update)
 }
 
 func DeleteUser(filter bson.D) error {
-	return DeleteOne("Users", filter)
+	return DeleteOne(USER_COLL, filter)
 }
 
 // DB WRAPPER FUNCTIONS
@@ -122,7 +128,7 @@ func CreateOne(collection string, document interface{}) (primitive.ObjectID, err
 	return result.InsertedID.(primitive.ObjectID), nil
 }
 
-func UpdateOne(collection string, filter bson.D, update bson.D) error {
+func UpdateOne(collection string, filter interface{}, update interface{}) error {
 	_, err := mongoClient.
 		Database("GoCharge").
 		Collection(collection).
@@ -130,7 +136,7 @@ func UpdateOne(collection string, filter bson.D, update bson.D) error {
 	return err
 }
 
-func DeleteOne(collection string, filter bson.D) error {
+func DeleteOne(collection string, filter interface{}) error {
 	_, err := mongoClient.
 		Database("GoCharge").
 		Collection(collection).
@@ -140,7 +146,7 @@ func DeleteOne(collection string, filter bson.D) error {
 
 func InitIndices() {
 	userIndexes := mongoClient.Database("GoCharge").
-		Collection("Users").
+		Collection(USER_COLL).
 		Indexes()
 	userIndexes.CreateOne(context.TODO(), mongo.IndexModel{
 		Keys:    bson.D{{"username", 1}},
@@ -152,11 +158,21 @@ func InitIndices() {
 	})
 
 	stationIndexes := mongoClient.Database("GoCharge").
-		Collection("Stations").
+		Collection(STATION_COLL).
 		Indexes()
 	stationIndexes.CreateOne(context.TODO(), mongo.IndexModel{
 		Keys:    bson.D{{"coordinates", "2dsphere"}},
 		Options: options.Index().SetUnique(true),
+	})
+	stationIndexes.CreateOne(context.TODO(), mongo.IndexModel{
+		Keys: bson.D{{"owner_id", 1}},
+	})
+
+	sessionIndexes := mongoClient.Database("GoCharge").
+		Collection(SESSION_COLL).
+		Indexes()
+	sessionIndexes.CreateOne(context.TODO(), mongo.IndexModel{
+		Keys: bson.D{{"user_id", 1}},
 	})
 }
 

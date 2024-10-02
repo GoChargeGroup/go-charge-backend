@@ -88,28 +88,38 @@ type Charger struct {
 	TotalPayments  float64            `json:"total_payments" bson:"total_payments"`
 }
 
-type Log struct {
-	ID             string  `json:"id"`
-	UserID         string  `json:"user_id"`
-	ChargerID      string  `json:"charger_id"`
-	StartTimestamp uint64  `json:"start_timestamp"`
-	EndTimestamp   uint64  `json:"end_timestamp"`
-	PaymentAmount  string  `json:"payment_amount"`
-	PowerUsed      float64 `json:"power_used"`
+type NewSessionInput struct {
+	ChargerID primitive.ObjectID `json:"charger_id"`
+}
+
+type EndSessionInput struct {
+	ID            primitive.ObjectID `json:"_id"`
+	PaymentAmount float64            `json:"payment_amount"`
+	PowerUsed     float64            `json:"power_used"`
+}
+
+type Session struct {
+	ID             primitive.ObjectID `json:"_id"`
+	UserID         primitive.ObjectID `json:"user_id"`
+	ChargerID      primitive.ObjectID `json:"charger_id"`
+	StartTimestamp int64              `json:"start_timestamp"`
+	EndTimestamp   int64              `json:"end_timestamp"`
+	PaymentAmount  float64            `json:"payment_amount"`
+	PowerUsed      float64            `json:"power_used"`
 }
 
 type StationRequest struct {
-	ID          string `json:"id"`
-	OwnerID     string `json:"owner_id"`
-	StationID   string `json:"station_id"`
-	Description string `json:"description"`
+	ID          primitive.ObjectID `json:"_id"`
+	OwnerID     string             `json:"owner_id"`
+	StationID   string             `json:"station_id"`
+	Description string             `json:"description"`
 }
 
 type ChargerReview struct {
-	ID         string   `json:"id"`
-	UserID     string   `json:"user_id"`
-	ChargerID  string   `json:"charger_id"`
-	PhotoURLs  []string `json:"photo_urls"`
-	Rating     int      `json:"rating"`
-	Commentary string   `json:"commentary"`
+	ID         primitive.ObjectID `json:"_id"`
+	UserID     string             `json:"user_id"`
+	ChargerID  string             `json:"charger_id"`
+	PhotoURLs  []string           `json:"photo_urls"`
+	Rating     int                `json:"rating"`
+	Commentary string             `json:"commentary"`
 }
