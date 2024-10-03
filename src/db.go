@@ -22,16 +22,7 @@ const CHARGER_REVIEWS = "ChargerReviews"
 
 // STATION WRAPPER FUNCTIONS
 
-func CreateStation(owner_id primitive.ObjectID, name string, description string, coordinates [2]float64) (primitive.ObjectID, error) {
-	new_station := Station{
-		ID:          primitive.NewObjectID(),
-		OwnerID:     owner_id,
-		PictureURLs: []string{},
-		Name:        name,
-		Description: description,
-		Coordinates: coordinates,
-		IsPublic:    false,
-	}
+func CreateStation(new_station Station) (primitive.ObjectID, error) {
 	return CreateOne(STATION_COLL, new_station)
 }
 
@@ -39,23 +30,13 @@ func GetStation(filter bson.D) (Station, error) {
 	return GetOne[Station](STATION_COLL, filter)
 }
 
-func GetStations(filter bson.D, k int64) ([]Station, error) {
-	return GetAll[Station](STATION_COLL, filter, k)
+func GetStations(filter bson.D, max_results int64) ([]Station, error) {
+	return GetAll[Station](STATION_COLL, filter, max_results)
 }
 
 // STATION WRAPPER FUNCTIONS
 
-func CreateCharger(station_id primitive.ObjectID, name string, description string, kwh_type string, charger_type string, price float64) (primitive.ObjectID, error) {
-	new_charger := Charger{
-		ID:             primitive.NewObjectID(),
-		StationID:      station_id,
-		Name:           name,
-		Description:    description,
-		KWhTypesId:     kwh_type,
-		ChargerTypesId: charger_type,
-		Price:          price,
-		TotalPayments:  0,
-	}
+func CreateCharger(new_charger Charger) (primitive.ObjectID, error) {
 	return CreateOne(CHARGER_COLL, new_charger)
 }
 
@@ -101,13 +82,13 @@ func GetOne[T interface{}](collection string, filter bson.D) (T, error) {
 	return result, err
 }
 
-func GetAll[T interface{}](collection string, filter bson.D, k int64) ([]T, error) {
-	var results []T
+func GetAll[T interface{}](collection string, filter bson.D, max_results int64) ([]T, error) {
+	results := []T{}
 
 	cursor, err := mongoClient.
 		Database("GoCharge").
 		Collection(collection).
-		Find(context.TODO(), filter, options.Find().SetLimit(k))
+		Find(context.TODO(), filter, options.Find().SetLimit(max_results))
 	if err != nil {
 		return results, err
 	}
@@ -168,11 +149,28 @@ func InitIndices() {
 		Keys: bson.D{{"owner_id", 1}},
 	})
 
+	chargerIndexes := mongoClient.Database("GoCharge").
+		Collection(CHARGER_COLL).
+		Indexes()
+	chargerIndexes.CreateOne(context.TODO(), mongo.IndexModel{
+		Keys: bson.D{{"station_id", 1}},
+	})
+	chargerIndexes.CreateOne(context.TODO(), mongo.IndexModel{
+		Keys:    bson.D{{"station_id", 1}, {"name", 1}},
+		Options: options.Index().SetUnique(true),
+	})
+
 	sessionIndexes := mongoClient.Database("GoCharge").
 		Collection(SESSION_COLL).
 		Indexes()
 	sessionIndexes.CreateOne(context.TODO(), mongo.IndexModel{
 		Keys: bson.D{{"user_id", 1}},
+	})
+	sessionIndexes.CreateOne(context.TODO(), mongo.IndexModel{
+		Keys: bson.D{{"charger_id", 1}},
+	})
+	sessionIndexes.CreateOne(context.TODO(), mongo.IndexModel{
+		Keys: bson.D{{"end_timestamp", 1}},
 	})
 }
 

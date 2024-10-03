@@ -25,24 +25,23 @@ func HandleStartSession(c *gin.Context) {
 	}
 
 	// search for ongoing sessions with the current charger, or the current user.
-	conflicting_session, err := GetOne[Session](SESSION_COLL, bson.D{
-		{"$or",
-			bson.A{
-				bson.D{{"user_id", user_id}},
-				bson.D{{"charger_id", start_session_data.ChargerID}},
-			},
-		},
+	filter := bson.D{
 		{"end_timestamp", 0}, // end_timestamp of 0 means not done.
-	})
+		{"$or", []interface{}{
+			bson.D{{"user_id", user_id}},
+			bson.D{{"charger_id", start_session_data.ChargerID}},
+		}},
+	}
+	conflicting_session, err := GetOne[Session](SESSION_COLL, filter)
 	if err == nil {
 		same_user := conflicting_session.UserID == user_id
 		same_charger := conflicting_session.ChargerID == start_session_data.ChargerID
 		if same_user && same_charger {
-			c.JSON(http.StatusInternalServerError, "This user already has a session open with this charger")
+			c.JSON(http.StatusInternalServerError, "You already have a session open with this charger")
 			return
 		}
 		if same_user {
-			c.JSON(http.StatusInternalServerError, "This user already has an existing session open")
+			c.JSON(http.StatusInternalServerError, "You already have an existing session open")
 			return
 		}
 		if same_charger {
@@ -97,9 +96,11 @@ func HandleEndSession(c *gin.Context) {
 		{"end_timestamp", 0},
 	}
 	update := bson.D{
-		{"payment_amount", end_session_data.PaymentAmount},
-		{"power_used", end_session_data.PowerUsed},
-		{"end_timestamp", time.Now().Unix()},
+		{"$set", bson.D{
+			{"payment_amount", end_session_data.PaymentAmount},
+			{"power_used", end_session_data.PowerUsed},
+			{"end_timestamp", time.Now().Unix()},
+		}},
 	}
 	err = UpdateOne(SESSION_COLL, filter, update)
 	if err == mongo.ErrNoDocuments {

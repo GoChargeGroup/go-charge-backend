@@ -36,27 +36,27 @@ type User struct {
 }
 
 type FindStationsInput struct {
-	Radius      float64    `json:"radius" bson:"radius"`
-	K           int64      `json:"k" bson:"k"`
-	Coordinates [2]float64 `json:"coordinates" bson:"coordinates"`
+	MaxRadius   float64    `json:"max_radius"`
+	MaxResults  int64      `json:"max_results"`
+	Coordinates [2]float64 `json:"coordinates"`
 }
 
 type FindStationsOutput struct {
-	Stations []Station `json:"stations" bson:"stations"`
+	Stations []Station `json:"stations"`
 }
 
 type NewStationInput struct {
-	OwnerID          string            `json:"owner_id" bson:"owner_id"`
-	Name             string            `json:"name" bson:"name"`
-	Description      string            `json:"description" bson:"description"`
-	Coordinates      [2]float64        `json:"coordinates" bson:"coordinates"`
-	OperationalHours [7][2]int64       `json:"operational_hours" bson:"operational_hours"`
-	Chargers         []NewChargerInput `json:"chargers" bson:"chargers"`
+	Name             string            `json:"name"`
+	Description      string            `json:"description"`
+	Coordinates      [2]float64        `json:"coordinates"`
+	Address          string            `json:"address"`
+	OperationalHours [7][2]int64       `json:"operational_hours"`
+	Chargers         []NewChargerInput `json:"chargers"`
 }
 
 type NewStationOutput struct {
-	Station  Station   `json:"station" bson:"station"`
-	Chargers []Charger `json:"chargers" bson:"chargers"`
+	Station  Station   `json:"station"`
+	Chargers []Charger `json:"chargers"`
 }
 
 type Station struct {
@@ -66,16 +66,17 @@ type Station struct {
 	Name             string             `json:"name" bson:"name"`
 	Description      string             `json:"description" bson:"description"`
 	Coordinates      [2]float64         `json:"coordinates" bson:"coordinates"`
+	Address          string             `json:"address" bson:"address"`
 	IsPublic         bool               `json:"is_public" bson:"is_public"`
 	OperationalHours [7][2]int64        `json:"operational_hours" bson:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
 }
 
 type NewChargerInput struct {
-	Name           string  `json:"name" bson:"name"`
-	Description    string  `json:"description" bson:"description"`
-	KWhTypesId     string  `json:"kWh_types_id" bson:"kWh_types_id"`
-	ChargerTypesId string  `json:"charger_types_id" bson:"charger_types_id"`
-	Price          float64 `json:"price" bson:"price"`
+	Name           string  `json:"name"`
+	Description    string  `json:"description"`
+	KWhTypesId     string  `json:"kWh_types_id"`
+	ChargerTypesId string  `json:"charger_types_id"`
+	Price          float64 `json:"price"`
 }
 
 type Charger struct {
@@ -101,27 +102,20 @@ type EndSessionInput struct {
 }
 
 type Session struct {
-	ID             primitive.ObjectID `json:"_id"`
-	UserID         primitive.ObjectID `json:"user_id"`
-	ChargerID      primitive.ObjectID `json:"charger_id"`
-	StartTimestamp int64              `json:"start_timestamp"` // start unix timestamp
-	EndTimestamp   int64              `json:"end_timestamp"`   // end unix timestamp
-	PaymentAmount  float64            `json:"payment_amount"`
-	PowerUsed      float64            `json:"power_used"`
+	ID             primitive.ObjectID `json:"_id" bson:"_id"`
+	UserID         primitive.ObjectID `json:"user_id" bson:"user_id"`
+	ChargerID      primitive.ObjectID `json:"charger_id" bson:"charger_id"`
+	StartTimestamp int64              `json:"start_timestamp" bson:"start_timestamp"` // start unix timestamp
+	EndTimestamp   int64              `json:"end_timestamp" bson:"end_timestamp"`     // end unix timestamp
+	PaymentAmount  float64            `json:"payment_amount" bson:"payment_amount"`
+	PowerUsed      float64            `json:"power_used" bson:"power_used"`
 }
 
-type StationRequest struct {
-	ID          primitive.ObjectID `json:"_id"`
-	OwnerID     string             `json:"owner_id"`
-	StationID   string             `json:"station_id"`
-	Description string             `json:"description"`
-}
-
-type ChargerReview struct {
-	ID         primitive.ObjectID `json:"_id"`
-	UserID     string             `json:"user_id"`
-	ChargerID  string             `json:"charger_id"`
-	PhotoURLs  []string           `json:"photo_urls"`
-	Rating     int                `json:"rating"`
-	Commentary string             `json:"commentary"`
-}
+// type ChargerReview struct {
+// 	ID         primitive.ObjectID `json:"_id"`
+// 	UserID     string             `json:"user_id"`
+// 	ChargerID  string             `json:"charger_id"`
+// 	PhotoURLs  []string           `json:"photo_urls"`
+// 	Rating     int                `json:"rating"`
+// 	Commentary string             `json:"commentary"`
+// }

@@ -25,6 +25,9 @@ func main() {
 	user_router.POST("/request-station", HandleStationRequest)
 	user_router.POST("/closest-stations", HandleClosestStations)
 
+	user_router.POST("/start-session", HandleStartSession)
+	user_router.POST("/end-session", HandleEndSession)
+
 	err := router.Run(":8083")
 	if err != nil {
 		log.Fatalf("impossible to start server: %s", err)
