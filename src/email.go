@@ -23,8 +23,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"golang.org/x/oauth2"
@@ -124,13 +126,10 @@ func InitPasswordResetTemplate() {
 const PWD_RESET_URL_ROUTE = "/password-reset-request?token="
 
 func GetResetPasswordMessageBody(user User) (string, error) {
-	jwt_token_str, err := GenJWT(user)
-	if err != nil {
-		return "", err
-	}
-	pwd_reset_link := os.Getenv("FRONTEND_URL") + PWD_RESET_URL_ROUTE + jwt_token_str
+	otp := strconv.Itoa(rand.Int() % 1000)
+	otp_id_map[otp] = user.ID
 
-	replacer := strings.NewReplacer("{{name}}", user.Username, "{{password_reset_link}}", pwd_reset_link)
+	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp)
 	final_msg := replacer.Replace(reset_password_template)
 	return final_msg, nil
 }

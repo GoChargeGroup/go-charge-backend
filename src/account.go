@@ -155,17 +155,24 @@ func HandleDeleteAccount(c *gin.Context) {
 	c.JSON(http.StatusOK, "")
 }
 
-func HandlePasswordReset(c *gin.Context) {
-	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
+var otp_id_map = map[string]string{}
 
-	var password string
-	err := ReadBody(c, QPPair{"password", &password})
+func HandlePasswordReset(c *gin.Context) {
+	var otp, password string
+	err := ReadBody(c, QPPair{"otp", &otp}, QPPair{"password", &password})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	userID, err := primitive.ObjectIDFromHex(userClaim.ID)
+	user_id_str, ok := otp_id_map[otp]
+	if !ok {
+		c.JSON(http.StatusUnauthorized, "Invalid OTP.")
+		return
+	}
+	delete(otp_id_map, otp)
+
+	user_id, err := primitive.ObjectIDFromHex(user_id_str)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -173,7 +180,7 @@ func HandlePasswordReset(c *gin.Context) {
 
 	err = UpdateUser(
 		bson.D{
-			{"_id", userID},
+			{"_id", user_id},
 		},
 		bson.D{
 			{"$set", bson.D{
@@ -186,7 +193,13 @@ func HandlePasswordReset(c *gin.Context) {
 		return
 	}
 
-	user, err := GetUser(bson.D{{"_id", userID}})
+	user, err := GetUser(bson.D{{"_id", user_id}})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = GenAndSetJWT(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
