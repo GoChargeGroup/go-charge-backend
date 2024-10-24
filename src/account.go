@@ -236,3 +236,8 @@ func HandlePasswordResetRequest(c *gin.Context) {
 
 	c.JSON(http.StatusOK, msg)
 }
+func HandleLogout(c *gin.Context) {
+    c.SetCookie("Authorization", "", -1, "/", "", false, true)
+    c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+

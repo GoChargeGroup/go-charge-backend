@@ -14,6 +14,7 @@ func main() {
 	router := gin.Default()
 	router.GET("/signup", HandleSignup)
 	router.GET("/login", HandleLogin)
+	router.POST("/logout", HandleLogout)
 	router.POST("/password-reset-request", HandlePasswordResetRequest)
 	router.POST("/password-reset", HandlePasswordReset)
 
