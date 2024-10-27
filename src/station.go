@@ -97,13 +97,13 @@ const TRUE_MAX_RESULTS = 20
 
 // Get k-closest stations to a location
 func HandleClosestStations(c *gin.Context) {
-	query_data, err := ReadBodyToStruct[FindStationsInput](c)
+	body_data, err := ReadBodyToStruct[FindStationsInput](c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	max_results := min(query_data.MaxResults, TRUE_MAX_RESULTS)
+	max_results := min(body_data.MaxResults, TRUE_MAX_RESULTS)
 
 	// current_time := time.Now().Unix()
 	// current_day_epoch := current_time % (60 * 60 * 24)
@@ -111,27 +111,157 @@ func HandleClosestStations(c *gin.Context) {
 	// start_key := "operational_hours." + day_of_week + ".0"
 	// end_key := "operational_hours." + day_of_week + ".1"
 
-	mongoDBHQ := bson.D{
-		{"type", "Point"},
-		{"coordinates", query_data.Coordinates},
-	}
-	stations, err := GetStations(bson.D{
-		{"coordinates", bson.D{
-			{"$near", bson.D{
-				{"$geometry", mongoDBHQ},
-				{"$maxDistance", query_data.MaxRadius},
+	stations, err := Aggregate[FindStationsOutput](STATION_COLL, bson.A{
+		// get closest stations from nearest to farthest
+		bson.D{
+			{"$geoNear", bson.D{
+				{"near", bson.D{
+					{"type", "Point"},
+					{"coordinates", body_data.Coordinates},
+				}},
+				{"maxDistance", body_data.MaxRadius},
+				{"spherical", true},
+				{"key", "coordinates"},
+				{"distanceField", "distance"},
 			}},
-		}},
-		{"is_public", true},
-		// {start_key, bson.D{{"$lt", current_day_epoch}}},
-		// {end_key, bson.D{{"$gt", current_day_epoch}}},
-	}, max_results)
+		},
+		// join valid chargers
+		bson.D{
+			{"$lookup", bson.D{
+				{"from", "Chargers"},
+				{"localField", "_id"},
+				{"foreignField", "station_id"},
+				{"as", "chargers"},
+				{"pipeline", bson.A{
+					bson.D{
+						{"$match", bson.D{
+							{"status", body_data.Status},
+							{"charger_types_id", body_data.PlugType},
+							{"kWh_types_id", body_data.PowerOutput},
+							{"price", bson.D{
+								{"$lte", body_data.MaxPrice},
+							}},
+						}},
+					},
+				}},
+			}},
+		},
+		// only return stations with valid chargers.
+		bson.D{
+			{"$match", bson.D{
+				{"chargers.0", bson.D{
+					{"$exists", true},
+				}},
+			}},
+		},
+		// limit to max results
+		bson.D{
+			{"$limit", max_results},
+		},
+	})
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	result := FindStationsOutput{stations}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, stations)
+}
+
+func HandleFavoriteStation(c *gin.Context) {
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
+	if user_claim.Role != USER_ROLE {
+		c.JSON(http.StatusUnauthorized, "Only user accounts are allowed to favorite a station")
+		return
+	}
+
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	body_data, err := ReadBodyToStruct[FavoriteStationInput](c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	station_id, err := primitive.ObjectIDFromHex(body_data.StationID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = UpdateUser(
+		bson.D{
+			{"_id", user_id},
+		},
+		bson.D{
+			{"$addToSet", bson.D{
+				{"favorite_station_ids", station_id},
+			}},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	user, err := GetUser(bson.D{{"_id", user_id}})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+func HandleUnfavoriteStation(c *gin.Context) {
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
+	if user_claim.Role != USER_ROLE {
+		c.JSON(http.StatusUnauthorized, "Only user accounts are allowed to favorite a station")
+		return
+	}
+
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	body_data, err := ReadBodyToStruct[FavoriteStationInput](c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	station_id, err := primitive.ObjectIDFromHex(body_data.StationID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = UpdateUser(
+		bson.D{
+			{"_id", user_id},
+		},
+		bson.D{
+			{"$pull", bson.D{
+				{"favorite_station_ids", station_id},
+			}},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	user, err := GetUser(bson.D{{"_id", user_id}})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
 }

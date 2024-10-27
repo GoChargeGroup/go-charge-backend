@@ -36,13 +36,31 @@ type User struct {
 }
 
 type FindStationsInput struct {
+	Status      string     `json:"status"`
+	PowerOutput string     `json:"power_output"`
+	PlugType    string     `json:"plug_type"`
+	MaxPrice    float64    `json:"max_price"`
 	MaxRadius   float64    `json:"max_radius"`
 	MaxResults  int64      `json:"max_results"`
 	Coordinates [2]float64 `json:"coordinates"`
 }
 
 type FindStationsOutput struct {
-	Stations []Station `json:"stations"`
+	ID               primitive.ObjectID `json:"_id" bson:"_id"`
+	OwnerID          primitive.ObjectID `json:"owner_id" bson:"owner_id"`
+	PictureURLs      []string           `json:"picture_urls" bson:"picture_urls"`
+	Name             string             `json:"name" bson:"name"`
+	Description      string             `json:"description" bson:"description"`
+	Coordinates      [2]float64         `json:"coordinates" bson:"coordinates"`
+	Address          string             `json:"address" bson:"address"`
+	IsPublic         bool               `json:"is_public" bson:"is_public"`
+	OperationalHours [7][2]int64        `json:"operational_hours" bson:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
+	Chargers         []Charger          `json:"chargers" bson:"chargers"`
+	Distance         float64            `json:"distance" bson:"distance"`
+}
+
+type FavoriteStationInput struct {
+	StationID string `json:"station_id" bson:"station_id"`
 }
 
 type NewStationInput struct {

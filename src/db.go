@@ -117,6 +117,21 @@ func UpdateOne(collection string, filter interface{}, update interface{}) error 
 	return err
 }
 
+func Aggregate[T interface{}](collection string, pipeline bson.A) ([]T, error) {
+	results := []T{}
+
+	cursor, err := mongoClient.
+		Database("GoCharge").
+		Collection(collection).
+		Aggregate(context.TODO(), pipeline)
+	if err != nil {
+		return results, err
+	}
+
+	err = cursor.All(context.TODO(), &results)
+	return results, err
+}
+
 func DeleteOne(collection string, filter interface{}) error {
 	_, err := mongoClient.
 		Database("GoCharge").

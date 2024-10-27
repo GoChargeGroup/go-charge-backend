@@ -23,10 +23,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"golang.org/x/oauth2"
@@ -125,19 +123,34 @@ func InitPasswordResetTemplate() {
 
 const PWD_RESET_URL_ROUTE = "/password-reset-request?token="
 
-func GetResetPasswordMessageBody(user User) (string, error) {
-	otp := strconv.Itoa(rand.Int() % 1000)
-	otp_id_map[otp] = user.ID
-
-	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp)
+func GetResetPasswordMessageBody(user User, otp string) (string, error) {
+	title := "GoCharge Password Reset"
+	action := "reset your GoCharge password"
+	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp, "{{action}}", action, "{{title}}", title)
 	final_msg := replacer.Replace(reset_password_template)
 	return final_msg, nil
 }
 
-func SendEmail(user User, msg_body string) error {
+func GetEditAccountMessageBody(user User, otp string) (string, error) {
+	title := "GoCharge Edit Account"
+	action := "edit your GoCharge account"
+	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp, "{{action}}", action, "{{title}}", title)
+	final_msg := replacer.Replace(reset_password_template)
+	return final_msg, nil
+}
+
+func GetDeleteAccountMessageBody(user User, otp string) (string, error) {
+	title := "GoCharge Delete Account"
+	action := "delete your GoCharge account"
+	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp, "{{action}}", action, "{{title}}", title)
+	final_msg := replacer.Replace(reset_password_template)
+	return final_msg, nil
+}
+
+func SendEmail(user User, msg_body string, msg_subject string) error {
 	from := "From: " + "gocharge.group@gmail.com" + "\r\n"
 	to := "To: " + user.Email + "\r\n"
-	subject := "Subject: " + "Password Reset Request" + "\r\n"
+	subject := "Subject: " + msg_subject + "\r\n"
 	mime := "MIME-Version: " + "1.0" + "\r\n"
 	content_type := "Content-Type: " + "text/html; charset=\"utf-8\"" + "\r\n\r\n"
 	body := msg_body + "\r\n"

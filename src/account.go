@@ -1,7 +1,10 @@
 package main
 
 import (
+	"math/rand"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -86,18 +89,67 @@ func HandleLogin(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+func HandleLogout(c *gin.Context) {
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// user must end session first.
+	_, err = GetOne[Session](SESSION_COLL, bson.D{
+		{"user_id", user_id},
+		{"end_timestamp", 0},
+	})
+	if err == nil {
+		c.JSON(http.StatusConflict, "Cannot log out until the current session has been finished.")
+		return
+	}
+
+	// log time user last logged out.
+	err = UpdateUser(
+		bson.D{
+			{"_id", user_id},
+		},
+		bson.D{
+			{"$set", bson.D{
+				{"last_logout_timestamp", time.Now().Unix()},
+			}},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// clear auth cookie
+	c.SetCookie("Authorization", "", -1, "/", "", false, true)
+	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
+var edit_account_otp_id_map = map[string]string{}
+
 func HandleEditAccount(c *gin.Context) {
 	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
 
-	var username, email string
+	var otp, username, email string
 	err := ReadBody(c,
 		QPPair{"username", &username},
 		QPPair{"email", &email},
+		QPPair{"otp", &otp},
 	)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
+
+	user_id_str, ok := edit_account_otp_id_map[otp]
+	if !ok || user_id_str != userClaim.ID {
+		c.JSON(http.StatusUnauthorized, "Invalid OTP.")
+		return
+	}
+	delete(edit_account_otp_id_map, otp)
 
 	userID, err := primitive.ObjectIDFromHex(userClaim.ID)
 	if err != nil {
@@ -137,6 +189,35 @@ func HandleEditAccount(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+func HandleEditAccountRequest(c *gin.Context) {
+	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
+
+	user, err := GetUser(bson.D{{"email", userClaim.Email}})
+	if err != nil || user.Email == "" {
+		c.JSON(http.StatusNotFound, err.Error())
+		return
+	}
+
+	otp := strconv.Itoa(rand.Int() % 1000)
+	edit_account_otp_id_map[otp] = user.ID
+
+	msg, err := GetResetPasswordMessageBody(user, otp)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = SendEmail(user, msg, "Edit Account Request")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, "")
+}
+
+var delete_account_otp_id_map = map[string]string{}
+
 func HandleDeleteAccount(c *gin.Context) {
 	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
 
@@ -145,6 +226,20 @@ func HandleDeleteAccount(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	var otp string
+	err = ReadBody(c, QPPair{"otp", &otp})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	user_id_str, ok := delete_account_otp_id_map[otp]
+	if !ok || user_id_str != userClaim.ID {
+		c.JSON(http.StatusUnauthorized, "Invalid OTP.")
+		return
+	}
+	delete(delete_account_otp_id_map, otp)
 
 	err = DeleteUser(bson.D{{"_id", userID}})
 	if err != nil {
@@ -155,32 +250,53 @@ func HandleDeleteAccount(c *gin.Context) {
 	c.JSON(http.StatusOK, "")
 }
 
-var otp_id_map = map[string]string{}
+func HandleDeleteAccountRequest(c *gin.Context) {
+	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
 
-func HandlePasswordReset(c *gin.Context) {
-	var otp, password string
-	err := ReadBody(c, QPPair{"otp", &otp}, QPPair{"password", &password})
-	if err != nil {
-		c.JSON(http.StatusBadRequest, err.Error())
+	user, err := GetUser(bson.D{{"email", userClaim.Email}})
+	if err != nil || user.Email == "" {
+		c.JSON(http.StatusNotFound, err.Error())
 		return
 	}
 
-	user_id_str, ok := otp_id_map[otp]
-	if !ok {
-		c.JSON(http.StatusUnauthorized, "Invalid OTP.")
-		return
-	}
-	delete(otp_id_map, otp)
+	otp := strconv.Itoa(rand.Int() % 1000)
+	delete_account_otp_id_map[otp] = user.ID
 
-	user_id, err := primitive.ObjectIDFromHex(user_id_str)
+	msg, err := GetDeleteAccountMessageBody(user, otp)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	err = SendEmail(user, msg, "Delete Account Request")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, "")
+}
+
+var reset_pwd_otp_id_map = map[string]string{}
+
+func HandlePasswordReset(c *gin.Context) {
+	var otp, email, password string
+	err := ReadBody(c, QPPair{"otp", &otp}, QPPair{"email", &email}, QPPair{"password", &password})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	user_email_str, ok := reset_pwd_otp_id_map[otp]
+	if !ok || user_email_str != email {
+		c.JSON(http.StatusUnauthorized, "Invalid OTP.")
+		return
+	}
+	delete(reset_pwd_otp_id_map, otp)
+
 	err = UpdateUser(
 		bson.D{
-			{"_id", user_id},
+			{"email", email},
 		},
 		bson.D{
 			{"$set", bson.D{
@@ -193,7 +309,7 @@ func HandlePasswordReset(c *gin.Context) {
 		return
 	}
 
-	user, err := GetUser(bson.D{{"_id", user_id}})
+	user, err := GetUser(bson.D{{"email", email}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -218,26 +334,24 @@ func HandlePasswordResetRequest(c *gin.Context) {
 
 	user, err := GetUser(bson.D{{"email", email}})
 	if err != nil || user.Email == "" {
-		c.JSON(http.StatusNotFound, err.Error())
+		c.JSON(http.StatusOK, "")
 		return
 	}
 
-	msg, err := GetResetPasswordMessageBody(user)
+	otp := strconv.Itoa(rand.Int() % 1000)
+	reset_pwd_otp_id_map[otp] = email
+
+	msg, err := GetResetPasswordMessageBody(user, otp)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	err = SendEmail(user, msg)
+	err = SendEmail(user, msg, "Password Reset Request")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, msg)
+	c.JSON(http.StatusOK, "")
 }
-func HandleLogout(c *gin.Context) {
-    c.SetCookie("Authorization", "", -1, "/", "", false, true)
-    c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
-}
-
