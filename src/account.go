@@ -14,6 +14,7 @@ import (
 
 const USER_ROLE = "user"
 const OWNER_ROLE = "owner"
+const ADMIN_ROLE = "admin"
 
 func HandleSignup(c *gin.Context) {
 	var username, password, email, role string
@@ -294,6 +295,16 @@ func HandlePasswordReset(c *gin.Context) {
 	}
 	delete(reset_pwd_otp_id_map, otp)
 
+	user, err := GetUser(bson.D{{"email", email}})
+	if err != nil {
+		c.JSON(http.StatusNotFound, "It appears there no longer exist an account using this email.")
+		return
+	}
+	if user.Role == ADMIN_ROLE {
+		c.JSON(http.StatusUnauthorized, "If you are an admin, please contact GoCharge dev team to reset your password.")
+		return
+	}
+
 	err = UpdateUser(
 		bson.D{
 			{"email", email},
@@ -304,12 +315,6 @@ func HandlePasswordReset(c *gin.Context) {
 			}},
 		},
 	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	user, err := GetUser(bson.D{{"email", email}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return

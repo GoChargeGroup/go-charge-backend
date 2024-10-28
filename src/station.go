@@ -12,20 +12,15 @@ import (
 // NOTE: validating requests is done by gocharge admins manually (just change it in the DB).
 func HandleStationRequest(c *gin.Context) {
 	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
-	if user_claim.Role != OWNER_ROLE {
-		c.JSON(http.StatusUnauthorized, "Only owner accounts are allowed to request charging stations")
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	station_data, err := ReadBodyToStruct[NewStationInput](c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
-		return
-	}
-
-	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -93,6 +88,43 @@ func HandleStationRequest(c *gin.Context) {
 	c.JSON(http.StatusOK, new_station_out)
 }
 
+func HandleStationRequestApproval(c *gin.Context) {
+	station_data, err := ReadBodyToStruct[ApprovedStationInput](c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	station_id, err := primitive.ObjectIDFromHex(station_data.StationID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = UpdateOne(
+		STATION_COLL,
+		bson.D{
+			{"_id", station_id},
+			{"is_public", false},
+		},
+		bson.D{
+			{"$set", bson.D{
+				{"is_public", true},
+			}},
+		},
+	)
+	if err != nil {
+		if err.Error() == mongo.ErrNoDocuments.Error() {
+			c.JSON(http.StatusConflict, "A station with this id or non-public status was not found")
+		} else {
+			c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, "")
+}
+
 const TRUE_MAX_RESULTS = 20
 
 // Get k-closest stations to a location
@@ -123,6 +155,12 @@ func HandleClosestStations(c *gin.Context) {
 				{"spherical", true},
 				{"key", "coordinates"},
 				{"distanceField", "distance"},
+			}},
+		},
+		// only see public stations
+		bson.D{
+			{"$match", bson.D{
+				{"is_public", true},
 			}},
 		},
 		// join valid chargers
@@ -170,11 +208,6 @@ func HandleClosestStations(c *gin.Context) {
 
 func HandleFavoriteStation(c *gin.Context) {
 	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
-	if user_claim.Role != USER_ROLE {
-		c.JSON(http.StatusUnauthorized, "Only user accounts are allowed to favorite a station")
-		return
-	}
-
 	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
@@ -219,11 +252,6 @@ func HandleFavoriteStation(c *gin.Context) {
 
 func HandleUnfavoriteStation(c *gin.Context) {
 	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
-	if user_claim.Role != USER_ROLE {
-		c.JSON(http.StatusUnauthorized, "Only user accounts are allowed to favorite a station")
-		return
-	}
-
 	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())

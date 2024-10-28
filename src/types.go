@@ -59,6 +59,10 @@ type FindStationsOutput struct {
 	Distance         float64            `json:"distance" bson:"distance"`
 }
 
+type ApprovedStationInput struct {
+	StationID string `json:"station_id" bson:"station_id"`
+}
+
 type FavoriteStationInput struct {
 	StationID string `json:"station_id" bson:"station_id"`
 }

@@ -43,7 +43,14 @@ func GenAndSetJWT(c *gin.Context, user User) error {
 	return nil
 }
 
-func AuthMiddleware(c *gin.Context) {
+func BuildAuthMiddleware(required_role string) func(*gin.Context) {
+	return func(c *gin.Context) {
+		AuthMiddleware(c, required_role)
+		return
+	}
+}
+
+func AuthMiddleware(c *gin.Context, required_role string) {
 	auth_header := c.GetHeader(JWT_HEADER)
 	if auth_header == "" {
 		c.JSON(http.StatusUnauthorized, "Authorization header is missing")
@@ -75,6 +82,12 @@ func AuthMiddleware(c *gin.Context) {
 	claims, ok := token.Claims.(*JWTClaims)
 	if !ok || claims.User.ID == "" {
 		c.JSON(http.StatusUnauthorized, "Invalid token claims")
+		c.Abort()
+		return
+	}
+	if claims.User.Role != required_role {
+		msg := claims.User.Role + " cannot perform this action"
+		c.JSON(http.StatusUnauthorized, msg)
 		c.Abort()
 		return
 	}
