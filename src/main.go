@@ -53,6 +53,7 @@ func InitAdminRouter(router *gin.Engine) {
 
 	// station routes
 	admin_router.POST("/approve-station", HandleStationRequestApproval)
+	admin_router.POST("/unapproved-stations", HandleUnapprovedStations)
 }
 
 var wg sync.WaitGroup

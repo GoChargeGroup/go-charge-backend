@@ -125,6 +125,32 @@ func HandleStationRequestApproval(c *gin.Context) {
 	c.JSON(http.StatusOK, "")
 }
 
+func HandleUnapprovedStations(c *gin.Context) {
+	stations, err := Aggregate[UnapprovedStationsOutput](STATION_COLL, bson.A{
+		// only see private (unapproved) stations
+		bson.D{
+			{"$match", bson.D{
+				{"is_public", false},
+			}},
+		},
+		// join valid chargers
+		bson.D{
+			{"$lookup", bson.D{
+				{"from", "Chargers"},
+				{"localField", "_id"},
+				{"foreignField", "station_id"},
+				{"as", "chargers"},
+			}},
+		},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, stations)
+}
+
 const TRUE_MAX_RESULTS = 20
 
 // Get k-closest stations to a location
