@@ -129,43 +129,39 @@ func HandleLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
 
-var edit_account_otp_id_map = map[string]string{}
-
 func HandleEditAccount(c *gin.Context) {
-	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
-
-	var otp, username, email string
-	err := ReadBody(c,
-		QPPair{"username", &username},
-		QPPair{"email", &email},
-		QPPair{"otp", &otp},
-	)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, err.Error())
-		return
-	}
-
-	user_id_str, ok := edit_account_otp_id_map[otp]
-	if !ok || user_id_str != userClaim.ID {
-		c.JSON(http.StatusUnauthorized, "Invalid OTP.")
-		return
-	}
-	delete(edit_account_otp_id_map, otp)
-
-	userID, err := primitive.ObjectIDFromHex(userClaim.ID)
+	// get user claim and id
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	// read new email
+	var email, username string
+	err = ReadBody(c,
+		QPPair{"email", &email},
+		QPPair{"username", &username},
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+	if email == user_claim.Email && username == user_claim.Username {
+		c.JSON(http.StatusConflict, "Cannot use the same email and username.")
+		return
+	}
+
+	// update mongodb
 	err = UpdateUser(
 		bson.D{
-			{"_id", userID},
+			{"_id", user_id},
 		},
 		bson.D{
 			{"$set", bson.D{
-				{"username", username},
 				{"email", email},
+				{"username", username},
 			}},
 		},
 	)
@@ -174,13 +170,21 @@ func HandleEditAccount(c *gin.Context) {
 		return
 	}
 
-	user, err := GetUser(bson.D{{"_id", userID}})
+	user, err := GetUser(bson.D{{"_id", user_id}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// reset jwt header since username and email might have changed.
+	// send email about update.
+	email_body := GetEditAccountMessageBody(user)
+	err = SendEmail(user, email_body, "")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// reset jwt header since email or username changed.
 	err = GenAndSetJWT(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
@@ -188,33 +192,6 @@ func HandleEditAccount(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, user)
-}
-
-func HandleEditAccountRequest(c *gin.Context) {
-	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
-
-	user, err := GetUser(bson.D{{"email", userClaim.Email}})
-	if err != nil || user.Email == "" {
-		c.JSON(http.StatusNotFound, err.Error())
-		return
-	}
-
-	otp := strconv.Itoa(rand.Int() % 1000)
-	edit_account_otp_id_map[otp] = user.ID
-
-	msg, err := GetResetPasswordMessageBody(user, otp)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	err = SendEmail(user, msg, "Edit Account Request")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	c.JSON(http.StatusOK, "")
 }
 
 var delete_account_otp_id_map = map[string]string{}
@@ -252,10 +229,15 @@ func HandleDeleteAccount(c *gin.Context) {
 }
 
 func HandleDeleteAccountRequest(c *gin.Context) {
-	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
 
-	user, err := GetUser(bson.D{{"email", userClaim.Email}})
-	if err != nil || user.Email == "" {
+	user, err := GetUser(bson.D{{"_id", user_id}})
+	if err != nil {
 		c.JSON(http.StatusNotFound, err.Error())
 		return
 	}

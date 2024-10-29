@@ -14,7 +14,6 @@ func InitUserRouter(router *gin.Engine) {
 
 	// account routes
 	user_router.POST("/edit-account", HandleEditAccount)
-	user_router.POST("/edit-account-request", HandleEditAccountRequest)
 	user_router.POST("/delete-account", HandleDeleteAccount)
 	user_router.POST("/delete-account-request", HandleDeleteAccountRequest)
 	user_router.POST("/logout", HandleLogout)
@@ -35,7 +34,6 @@ func InitOwnerRouter(router *gin.Engine) {
 
 	// account routes
 	owner_router.POST("/edit-account", HandleEditAccount)
-	owner_router.POST("/edit-account-request", HandleEditAccountRequest)
 	owner_router.POST("/delete-account", HandleDeleteAccount)
 	owner_router.POST("/delete-account-request", HandleDeleteAccountRequest)
 	owner_router.POST("/logout", HandleLogout)

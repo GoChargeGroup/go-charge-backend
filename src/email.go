@@ -131,12 +131,13 @@ func GetResetPasswordMessageBody(user User, otp string) (string, error) {
 	return final_msg, nil
 }
 
-func GetEditAccountMessageBody(user User, otp string) (string, error) {
+func GetEditAccountMessageBody(user User) string {
+	otp := ""
 	title := "GoCharge Edit Account"
 	action := "edit your GoCharge account"
 	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp, "{{action}}", action, "{{title}}", title)
 	final_msg := replacer.Replace(reset_password_template)
-	return final_msg, nil
+	return final_msg
 }
 
 func GetDeleteAccountMessageBody(user User, otp string) (string, error) {
