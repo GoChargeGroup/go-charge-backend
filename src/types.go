@@ -36,13 +36,13 @@ type User struct {
 }
 
 type FindStationsInput struct {
-	Status      string     `json:"status"`
-	PowerOutput string     `json:"power_output"`
-	PlugType    string     `json:"plug_type"`
-	MaxPrice    float64    `json:"max_price"`
-	MaxRadius   float64    `json:"max_radius"`
-	MaxResults  int64      `json:"max_results"`
-	Coordinates [2]float64 `json:"coordinates"`
+	Statuses     []string   `json:"statuses"`
+	PowerOutputs []string   `json:"power_outputs"`
+	PlugTypes    []string   `json:"plug_types"`
+	MaxPrice     float64    `json:"max_price"`
+	MaxRadius    float64    `json:"max_radius"`
+	MaxResults   int64      `json:"max_results"`
+	Coordinates  [2]float64 `json:"coordinates"`
 }
 
 type UnapprovedStationsOutput struct {

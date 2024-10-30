@@ -58,6 +58,7 @@ var wg sync.WaitGroup
 
 func RunPublicVersion() {
 	router := gin.Default()
+	router.Use(CORSMiddleware())
 
 	router.GET("/signup", HandleSignup)
 	router.GET("/login", HandleLogin)
@@ -77,6 +78,7 @@ func RunPublicVersion() {
 
 func RunPrivateVersion() {
 	router := gin.Default()
+	router.Use(CORSMiddleware())
 
 	router.GET("/login", HandleLogin)
 

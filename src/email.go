@@ -123,12 +123,12 @@ func InitPasswordResetTemplate() {
 
 const PWD_RESET_URL_ROUTE = "/password-reset-request?token="
 
-func GetResetPasswordMessageBody(user User, otp string) (string, error) {
+func GetResetPasswordMessageBody(user User, otp string) string {
 	title := "GoCharge Password Reset"
 	action := "reset your GoCharge password"
 	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp, "{{action}}", action, "{{title}}", title)
 	final_msg := replacer.Replace(reset_password_template)
-	return final_msg, nil
+	return final_msg
 }
 
 func GetEditAccountMessageBody(user User) string {
@@ -140,12 +140,12 @@ func GetEditAccountMessageBody(user User) string {
 	return final_msg
 }
 
-func GetDeleteAccountMessageBody(user User, otp string) (string, error) {
+func GetDeleteAccountMessageBody(user User, otp string) string {
 	title := "GoCharge Delete Account"
 	action := "delete your GoCharge account"
 	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp, "{{action}}", action, "{{title}}", title)
 	final_msg := replacer.Replace(reset_password_template)
-	return final_msg, nil
+	return final_msg
 }
 
 func SendEmail(user User, msg_body string, msg_subject string) error {

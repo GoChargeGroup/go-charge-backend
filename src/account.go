@@ -73,7 +73,7 @@ func HandleLogin(c *gin.Context) {
 		{"password", password},
 	})
 	if err == mongo.ErrNoDocuments {
-		c.JSON(http.StatusNotFound, "Incorrect username or password")
+		c.JSON(http.StatusUnauthorized, "Incorrect username or password")
 		return
 	}
 	if err != nil {
@@ -245,12 +245,7 @@ func HandleDeleteAccountRequest(c *gin.Context) {
 	otp := strconv.Itoa(rand.Int() % 1000)
 	delete_account_otp_id_map[otp] = user.ID
 
-	msg, err := GetDeleteAccountMessageBody(user, otp)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-
+	msg := GetDeleteAccountMessageBody(user, otp)
 	err = SendEmail(user, msg, "Delete Account Request")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
@@ -328,12 +323,7 @@ func HandlePasswordResetRequest(c *gin.Context) {
 	otp := strconv.Itoa(rand.Int() % 1000)
 	reset_pwd_otp_id_map[otp] = email
 
-	msg, err := GetResetPasswordMessageBody(user, otp)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-
+	msg := GetResetPasswordMessageBody(user, otp)
 	err = SendEmail(user, msg, "Password Reset Request")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
