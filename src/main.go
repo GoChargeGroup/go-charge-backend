@@ -40,6 +40,7 @@ func InitOwnerRouter(router *gin.Engine) {
 
 	// station routes
 	owner_router.POST("/request-station", HandleStationRequest)
+	owner_router.GET("/get-user-chargers", HandleGetUserChargers)
 }
 
 func InitAdminRouter(router *gin.Engine) {

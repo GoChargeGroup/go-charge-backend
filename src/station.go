@@ -318,3 +318,20 @@ func HandleUnfavoriteStation(c *gin.Context) {
 
 	c.JSON(http.StatusOK, user)
 }
+
+func HandleGetUserChargers(c *gin.Context) {
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID"})
+		return
+	}
+	filter := bson.D{{"owner_id", user_id}}
+	stations, err := GetStations(filter, 0) 
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chargers"})
+		return
+	}
+
+	c.JSON(http.StatusOK, stations)
+}
