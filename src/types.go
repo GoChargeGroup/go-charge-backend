@@ -54,6 +54,7 @@ type UnapprovedStationsOutput struct {
 	Coordinates      [2]float64         `json:"coordinates" bson:"coordinates"`
 	Address          string             `json:"address" bson:"address"`
 	IsPublic         bool               `json:"is_public" bson:"is_public"`
+	IsDenied         bool               `json:"is_denied" bson:"is_denied"`
 	OperationalHours [7][2]int64        `json:"operational_hours" bson:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
 	Chargers         []Charger          `json:"chargers" bson:"chargers"`
 }
@@ -70,10 +71,12 @@ type FindStationsOutput struct {
 	OperationalHours [7][2]int64        `json:"operational_hours" bson:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
 	Chargers         []Charger          `json:"chargers" bson:"chargers"`
 	Distance         float64            `json:"distance" bson:"distance"`
+	IsDenied         bool               `json:"is_denied" bson:"is_denied"`
 }
 
 type ApprovedStationInput struct {
 	StationID string `json:"station_id" bson:"station_id"`
+	Approved  bool   `json:"approved" bson:"approved"`
 }
 
 type FavoriteStationInput struct {
@@ -103,6 +106,7 @@ type Station struct {
 	Coordinates      [2]float64         `json:"coordinates" bson:"coordinates"`
 	Address          string             `json:"address" bson:"address"`
 	IsPublic         bool               `json:"is_public" bson:"is_public"`
+	IsDenied         bool               `json:"is_denied" bson:"is_denied"`
 	OperationalHours [7][2]int64        `json:"operational_hours" bson:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
 }
 

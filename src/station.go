@@ -34,6 +34,7 @@ func HandleStationRequest(c *gin.Context) {
 		Description:      station_data.Description,
 		Coordinates:      station_data.Coordinates,
 		IsPublic:         false,
+		IsDenied:         false,
 		OperationalHours: station_data.OperationalHours,
 		Address:          station_data.Address,
 	}
@@ -111,7 +112,8 @@ func HandleStationRequestApproval(c *gin.Context) {
 		},
 		bson.D{
 			{"$set", bson.D{
-				{"is_public", true},
+				{"is_public", station_data.Approved},
+				{"is_denied", !station_data.Approved},
 			}},
 		},
 	)
