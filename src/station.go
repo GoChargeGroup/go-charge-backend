@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"math"
 	"net/http"
 
@@ -164,7 +165,6 @@ func HandleClosestStations(c *gin.Context) {
 
 	max_results := min(body_data.MaxResults, TRUE_MAX_RESULTS)
 
-	// if max price or max radius is 0, return all results
 	if body_data.MaxPrice == 0 {
 		body_data.MaxPrice = math.MaxFloat64
 	}
@@ -172,7 +172,6 @@ func HandleClosestStations(c *gin.Context) {
 		body_data.MaxRadius = math.MaxFloat64
 	}
 
-	// Now build the aggregation pipeline
 	pipeline := bson.A{
 		bson.D{
 			{"$geoNear", bson.D{
@@ -191,7 +190,24 @@ func HandleClosestStations(c *gin.Context) {
 				{"is_public", true},
 			}},
 		},
-		bson.D{
+	}
+
+	matchConditions := bson.D{}
+
+	if len(body_data.Statuses) > 0 {
+		matchConditions = append(matchConditions, bson.E{"status", bson.D{{"$in", body_data.Statuses}}})
+	}
+	if len(body_data.PowerOutputs) > 0 {
+		matchConditions = append(matchConditions, bson.E{"kWh_types_id", bson.D{{"$in", body_data.PowerOutputs}}})
+	}
+	if len(body_data.PlugTypes) > 0 {
+		matchConditions = append(matchConditions, bson.E{"charger_types_id", bson.D{{"$in", body_data.PlugTypes}}})
+	}
+
+	matchConditions = append(matchConditions, bson.E{"price", bson.D{{"$lte", body_data.MaxPrice}}})
+
+	if len(matchConditions) > 0 {
+		pipeline = append(pipeline, bson.D{
 			{"$lookup", bson.D{
 				{"from", "Chargers"},
 				{"localField", "_id"},
@@ -199,37 +215,35 @@ func HandleClosestStations(c *gin.Context) {
 				{"as", "chargers"},
 				{"pipeline", bson.A{
 					bson.D{
-						{"$match", bson.D{
-							{"status", bson.D{{"$in", body_data.Statuses}}},
-							{"kWh_types_id", bson.D{{"$in", body_data.PowerOutputs}}},
-							{"charger_types_id", bson.D{{"$in", body_data.PlugTypes}}},
-							{"price", bson.D{{"$lte", body_data.MaxPrice}}},
-						}},
+						{"$match", matchConditions},
 					},
 				}},
 			}},
-		},
-		bson.D{
-			{"$match", bson.D{
-				{"chargers.0", bson.D{
-					{"$exists", true},
-				}},
-			}},
-		},
-		bson.D{
-			{"$limit", max_results},
-		},
+		})
 	}
 
-	stations, err := Aggregate[FindStationsOutput](STATION_COLL, pipeline)
+	pipeline = append(pipeline, bson.D{
+		{"$match", bson.D{
+			{"chargers.0", bson.D{
+				{"$exists", true},
+			}},
+		}},
+	})
 
+	pipeline = append(pipeline, bson.D{
+		{"$limit", max_results},
+	})
+
+	stations, err := Aggregate[FindStationsOutput](STATION_COLL, pipeline)
 	if err != nil {
+		log.Printf("Error with MongoDB aggregation: %v", err) 
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	c.JSON(http.StatusOK, stations)
 }
+
 
 func HandleFavoriteStation(c *gin.Context) {
 	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
