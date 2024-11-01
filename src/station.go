@@ -135,6 +135,7 @@ func HandleUnapprovedStations(c *gin.Context) {
 		bson.D{
 			{"$match", bson.D{
 				{"is_public", false},
+				{"is_denied", false},
 			}},
 		},
 		// join valid chargers
@@ -238,14 +239,13 @@ func HandleClosestStations(c *gin.Context) {
 
 	stations, err := Aggregate[FindStationsOutput](STATION_COLL, pipeline)
 	if err != nil {
-		log.Printf("Error with MongoDB aggregation: %v", err) 
+		log.Printf("Error with MongoDB aggregation: %v", err)
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	c.JSON(http.StatusOK, stations)
 }
-
 
 func HandleFavoriteStation(c *gin.Context) {
 	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
@@ -343,7 +343,7 @@ func HandleGetUserChargers(c *gin.Context) {
 		return
 	}
 	filter := bson.D{{"owner_id", user_id}}
-	stations, err := GetStations(filter, 0) 
+	stations, err := GetStations(filter, 0)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch chargers"})
 		return

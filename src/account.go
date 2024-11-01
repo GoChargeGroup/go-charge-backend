@@ -170,12 +170,6 @@ func HandleEditAccount(c *gin.Context) {
 		return
 	}
 
-	user, err := GetUser(bson.D{{"_id", user_id}})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-
 	// send email about update.
 	old_user := User{
 		ID:                 user_claim.ID,
@@ -187,6 +181,12 @@ func HandleEditAccount(c *gin.Context) {
 	}
 	email_body := GetEditAccountMessageBody(old_user)
 	err = SendEmail(old_user, email_body, "Account Email Update Notice")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	user, err := GetUser(bson.D{{"_id", user_id}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
