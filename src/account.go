@@ -177,8 +177,16 @@ func HandleEditAccount(c *gin.Context) {
 	}
 
 	// send email about update.
-	email_body := GetEditAccountMessageBody(user)
-	err = SendEmail(user, email_body, "")
+	old_user := User{
+		ID:                 user_claim.ID,
+		FavoriteStationIDs: []string{},
+		Username:           user_claim.Username,
+		Email:              user_claim.Email,
+		Role:               user_claim.Role,
+		PhotoURL:           "",
+	}
+	email_body := GetEditAccountMessageBody(old_user)
+	err = SendEmail(old_user, email_body, "Account Email Update Notice")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
