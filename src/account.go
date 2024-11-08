@@ -1,9 +1,7 @@
 package main
 
 import (
-	"math/rand"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,23 +15,27 @@ const OWNER_ROLE = "owner"
 const ADMIN_ROLE = "admin"
 
 func HandleSignup(c *gin.Context) {
-	var username, password, email, role string
-	err := ReadQueryParams(c,
-		QPPair{"username", &username},
-		QPPair{"password", &password},
-		QPPair{"email", &email},
-		QPPair{"role", &role},
-	)
+	body_data, err := ReadBodyToStruct[SignupInput](c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	if role != USER_ROLE && role != OWNER_ROLE {
+
+	if body_data.Role != USER_ROLE && body_data.Role != OWNER_ROLE {
 		c.JSON(http.StatusBadRequest, "Role must be 'user' or 'owner'")
 		return
 	}
 
-	userID, err := CreateUser(username, password, email, role)
+	new_user := NewUser{
+		Username:                body_data.Username,
+		Password:                body_data.Password,
+		Email:                   body_data.Email,
+		Role:                    body_data.Role,
+		PhotoURL:                "",
+		FavoriteStationIDs:      []string{},
+		SecurityQuestionAnswers: body_data.SecurityQuestionAnswers,
+	}
+	user_id, err := CreateOne(USER_COLL, new_user)
 	if mongo.IsDuplicateKeyError(err) {
 		c.JSON(http.StatusConflict, "A user with this username or email already exists")
 		return
@@ -43,7 +45,7 @@ func HandleSignup(c *gin.Context) {
 		return
 	}
 
-	user, err := GetUser(bson.D{{"_id", userID}})
+	user, err := GetUser(bson.D{{"_id", user_id}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -129,8 +131,7 @@ func HandleLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
 
-func HandleEditAccount(c *gin.Context) {
-	// get user claim and id
+func HandleEditEmail(c *gin.Context) {
 	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
 	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
 	if err != nil {
@@ -138,18 +139,14 @@ func HandleEditAccount(c *gin.Context) {
 		return
 	}
 
-	// read new email
-	var email, username string
-	err = ReadBody(c,
-		QPPair{"email", &email},
-		QPPair{"username", &username},
-	)
+	// read body
+	body_data, err := ReadBodyToStruct[ResetEmailInput](c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
-	if email == user_claim.Email && username == user_claim.Username {
-		c.JSON(http.StatusConflict, "Cannot use the same email and username.")
+	if body_data.NewEmail == user_claim.Email {
+		c.JSON(http.StatusConflict, "Cannot use the same email.")
 		return
 	}
 
@@ -157,11 +154,11 @@ func HandleEditAccount(c *gin.Context) {
 	err = UpdateUser(
 		bson.D{
 			{"_id", user_id},
+			{"security_question_answers", body_data.SecurityQuestionAnswers}, // ensure the security questions are correct
 		},
 		bson.D{
 			{"$set", bson.D{
-				{"email", email},
-				{"username", username},
+				{"email", body_data.NewEmail},
 			}},
 		},
 	)
@@ -170,29 +167,23 @@ func HandleEditAccount(c *gin.Context) {
 		return
 	}
 
-	// send email about update.
-	old_user := User{
-		ID:                 user_claim.ID,
-		FavoriteStationIDs: []string{},
-		Username:           user_claim.Username,
-		Email:              user_claim.Email,
-		Role:               user_claim.Role,
-		PhotoURL:           "",
-	}
-	email_body := GetEditAccountMessageBody(old_user)
-	err = SendEmail(old_user, email_body, "Account Email Update Notice")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	user, err := GetUser(bson.D{{"_id", user_id}})
+	// send email to old email
+	subject := "Email Update Notice"
+	title := "GoCharge Email Update"
+	action := "update your account's email to " + body_data.NewEmail
+	msg := FormMessageBody(user_claim.Username, "", action, title)
+	err = SendEmail(user_claim.Email, msg, subject) // user claim contains the old email, which is what we want.
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	// reset jwt header since email or username changed.
+	user, err := GetUser(bson.D{{"_id", user_id}})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
 	err = GenAndSetJWT(c, user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
@@ -202,17 +193,91 @@ func HandleEditAccount(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-var delete_account_otp_id_map = map[string]string{}
+var otp_manager = OTPManager{id_map: map[string]OTPData{}}
 
-func HandleDeleteAccount(c *gin.Context) {
-	userClaim := c.MustGet(MW_USER_KEY).(UserClaim)
+func HandleEditUsername(c *gin.Context) {
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
 
-	userID, err := primitive.ObjectIDFromHex(userClaim.ID)
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	// read body
+	var otp, new_username string
+	err = ReadBody(c, QPPair{"otp", &otp}, QPPair{"new_username", &new_username})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// try otp
+	err = otp_manager.TryOTP(user_claim.ID, otp)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	// perform update
+	err = UpdateUser(
+		bson.D{{"_id", user_id}},
+		bson.D{
+			{"$set", bson.D{
+				{"username", new_username},
+			}},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// get new user doc and update jwt
+	user, err := GetUser(bson.D{{"_id", user_id}})
+	if err != nil || user.Email == "" {
+		c.JSON(http.StatusOK, "")
+		return
+	}
+	err = GenAndSetJWT(c, user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
+}
+
+func HandleEditUsernameRequest(c *gin.Context) {
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
+
+	// gen otp
+	otp_data := otp_manager.GenOTP(user_claim.ID)
+
+	// send email
+	subject := "Edit Username Request"
+	title := "GoCharge Edit Username"
+	action := "edit your GoCharge username"
+	msg := FormMessageBody(user_claim.Username, otp_data.otp, action, title)
+	err := SendEmail(user_claim.Email, msg, subject)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, OTPResponse{otp_data.expiration})
+}
+
+func HandleDeleteAccount(c *gin.Context) {
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
+
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// read body
 	var otp string
 	err = ReadBody(c, QPPair{"otp", &otp})
 	if err != nil {
@@ -220,14 +285,15 @@ func HandleDeleteAccount(c *gin.Context) {
 		return
 	}
 
-	user_id_str, ok := delete_account_otp_id_map[otp]
-	if !ok || user_id_str != userClaim.ID {
-		c.JSON(http.StatusUnauthorized, "Invalid OTP.")
+	// try otp
+	err = otp_manager.TryOTP(user_claim.ID, otp)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, err.Error())
 		return
 	}
-	delete(delete_account_otp_id_map, otp)
 
-	err = DeleteUser(bson.D{{"_id", userID}})
+	// delete user
+	err = DeleteUser(bson.D{{"_id", user_id}})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -244,26 +310,20 @@ func HandleDeleteAccountRequest(c *gin.Context) {
 		return
 	}
 
-	user, err := GetUser(bson.D{{"_id", user_id}})
-	if err != nil {
-		c.JSON(http.StatusNotFound, err.Error())
-		return
-	}
+	otp_data := otp_manager.GenOTP(user_id.String())
 
-	otp := strconv.Itoa(rand.Int() % 1000)
-	delete_account_otp_id_map[otp] = user.ID
-
-	msg := GetDeleteAccountMessageBody(user, otp)
-	err = SendEmail(user, msg, "Delete Account Request")
+	title := "GoCharge Delete Account"
+	action := "delete your GoCharge account"
+	subject := "Delete Account Request"
+	msg := FormMessageBody(user_claim.Username, otp_data.otp, action, title)
+	err = SendEmail(user_claim.Email, msg, subject)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, "")
+	c.JSON(http.StatusOK, OTPResponse{otp_data.expiration})
 }
-
-var reset_pwd_otp_id_map = map[string]string{}
 
 func HandlePasswordReset(c *gin.Context) {
 	var otp, email, password string
@@ -273,13 +333,6 @@ func HandlePasswordReset(c *gin.Context) {
 		return
 	}
 
-	user_email_str, ok := reset_pwd_otp_id_map[otp]
-	if !ok || user_email_str != email {
-		c.JSON(http.StatusUnauthorized, "Invalid OTP.")
-		return
-	}
-	delete(reset_pwd_otp_id_map, otp)
-
 	user, err := GetUser(bson.D{{"email", email}})
 	if err != nil {
 		c.JSON(http.StatusNotFound, "It appears there no longer exist an account using this email.")
@@ -287,6 +340,12 @@ func HandlePasswordReset(c *gin.Context) {
 	}
 	if user.Role == ADMIN_ROLE {
 		c.JSON(http.StatusUnauthorized, "If you are an admin, please contact GoCharge dev team to reset your password.")
+		return
+	}
+
+	err = otp_manager.TryOTP(user.ID, otp)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, err.Error())
 		return
 	}
 
@@ -328,15 +387,17 @@ func HandlePasswordResetRequest(c *gin.Context) {
 		return
 	}
 
-	otp := strconv.Itoa(rand.Int() % 1000)
-	reset_pwd_otp_id_map[otp] = email
+	otp_data := otp_manager.GenOTP(user.ID)
 
-	msg := GetResetPasswordMessageBody(user, otp)
-	err = SendEmail(user, msg, "Password Reset Request")
+	title := "GoCharge Password Reset"
+	action := "reset your GoCharge password"
+	subject := "Password Reset Request"
+	msg := FormMessageBody(user.Username, otp_data.otp, action, title)
+	err = SendEmail(user.Email, msg, subject)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, "")
+	c.JSON(http.StatusOK, OTPResponse{otp_data.expiration})
 }

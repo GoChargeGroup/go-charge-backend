@@ -405,12 +405,14 @@ func HandleEditStation(c *gin.Context) {
 			{"owner_id", user_id}, // ensure owner owns this station
 		},
 		bson.D{
-			{"picture_urls", body_data.PictureURLs},
-			{"name", body_data.Name},
-			{"description", body_data.Description},
-			{"coordinates", body_data.Coordinates},
-			{"address", body_data.Address},
-			{"operational_hours", body_data.OperationalHours},
+			{"$set", bson.D{
+				{"picture_urls", body_data.PictureURLs},
+				{"name", body_data.Name},
+				{"description", body_data.Description},
+				{"coordinates", body_data.Coordinates},
+				{"address", body_data.Address},
+				{"operational_hours", body_data.OperationalHours},
+			}},
 		},
 	)
 	if err != nil {

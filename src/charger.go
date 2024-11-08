@@ -96,12 +96,14 @@ func HandleEditCharger(c *gin.Context) {
 			{"_id", body_data.ID},
 		},
 		bson.D{
-			{"name", body_data.Name},
-			{"description", body_data.Description},
-			{"kWh_types_id", body_data.KWhTypesId},
-			{"charger_types_id", body_data.ChargerTypesId},
-			{"price", body_data.Price},
-			{"status", body_data.Status},
+			{"$set", bson.D{
+				{"name", body_data.Name},
+				{"description", body_data.Description},
+				{"kWh_types_id", body_data.KWhTypesId},
+				{"charger_types_id", body_data.ChargerTypesId},
+				{"price", body_data.Price},
+				{"status", body_data.Status},
+			}},
 		},
 	)
 	if err != nil {

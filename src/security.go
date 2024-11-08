@@ -1,8 +1,12 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -111,4 +115,55 @@ func CORSMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+type OTPData struct {
+	otp        string
+	expiration int64
+}
+
+type OTPManager struct {
+	id_map map[string]OTPData
+}
+
+func (m OTPManager) GenOTP(user_id string) OTPData {
+	otp := fmt.Sprintf("%05d", rand.Int()%100000)
+
+	curr_time := time.Now().Unix()
+	exp_time := curr_time + 30 // expires in 30 seconds
+
+	otp_data := OTPData{otp, exp_time}
+	m.id_map[user_id] = otp_data
+
+	return otp_data
+}
+
+// func (m OTPManager) GenOTP(user_id string) (OTPData, error) {
+// 	curr_time := time.Now().Unix()
+
+// 	otp_data, ok := m.id_map[user_id]
+// 	if ok && curr_time < otp_data.expiration {
+// 		return OTPData{}, errors.New("Previous OTP has not expired yet")
+// 	}
+
+// 	return m.regen_otp(user_id), nil
+// }
+
+func (m OTPManager) TryOTP(user_id string, otp_attempt string) error {
+	curr_time := time.Now().Unix()
+
+	otp_data, ok := m.id_map[user_id]
+	if !ok {
+		return errors.New("No OTP has been generated for this user")
+	}
+
+	delete(m.id_map, user_id) // no matter what, delete the OTP.
+
+	if curr_time >= otp_data.expiration {
+		return errors.New("OTP has expired")
+	}
+	if otp_data.otp != otp_attempt {
+		return errors.New("Incorrect OTP")
+	}
+	return nil
 }

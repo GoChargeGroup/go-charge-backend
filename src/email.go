@@ -131,26 +131,15 @@ func GetResetPasswordMessageBody(user User, otp string) string {
 	return final_msg
 }
 
-func GetEditAccountMessageBody(user User) string {
-	otp := ""
-	title := "GoCharge Edit Account"
-	action := "edit your GoCharge account"
-	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp, "{{action}}", action, "{{title}}", title)
+func FormMessageBody(name string, otp string, action string, title string) string {
+	replacer := strings.NewReplacer("{{name}}", name, "{{otp}}", otp, "{{action}}", action, "{{title}}", title)
 	final_msg := replacer.Replace(reset_password_template)
 	return final_msg
 }
 
-func GetDeleteAccountMessageBody(user User, otp string) string {
-	title := "GoCharge Delete Account"
-	action := "delete your GoCharge account"
-	replacer := strings.NewReplacer("{{name}}", user.Username, "{{otp}}", otp, "{{action}}", action, "{{title}}", title)
-	final_msg := replacer.Replace(reset_password_template)
-	return final_msg
-}
-
-func SendEmail(user User, msg_body string, msg_subject string) error {
+func SendEmail(to_email string, msg_body string, msg_subject string) error {
 	from := "From: " + "gocharge.group@gmail.com" + "\r\n"
-	to := "To: " + user.Email + "\r\n"
+	to := "To: " + to_email + "\r\n"
 	subject := "Subject: " + msg_subject + "\r\n"
 	mime := "MIME-Version: " + "1.0" + "\r\n"
 	content_type := "Content-Type: " + "text/html; charset=\"utf-8\"" + "\r\n\r\n"

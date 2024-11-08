@@ -17,13 +17,27 @@ type UserClaim struct {
 	Role     string `json:"role"`
 }
 
+type SignupInput struct {
+	Username                string   `json:"username"`
+	Password                string   `json:"password"`
+	Email                   string   `json:"email"`
+	Role                    string   `json:"role"`
+	SecurityQuestionAnswers []string `json:"security_question_answers"`
+}
+
+type ResetEmailInput struct {
+	NewEmail                string   `json:"new_email"`
+	SecurityQuestionAnswers []string `json:"security_question_answers"`
+}
+
 type NewUser struct {
-	FavoriteStationIDs []string `json:"favorite_station_ids" bson:"favorite_station_ids"`
-	Username           string   `json:"username" bson:"username"`
-	Password           string   `json:"password" bson:"password"`
-	Email              string   `json:"email" bson:"email"`
-	Role               string   `json:"role" bson:"role"`
-	PhotoURL           string   `json:"photo_url" bson:"photo_url"`
+	FavoriteStationIDs      []string `json:"favorite_station_ids" bson:"favorite_station_ids"`
+	Username                string   `json:"username" bson:"username"`
+	Password                string   `json:"password" bson:"password"`
+	Email                   string   `json:"email" bson:"email"`
+	Role                    string   `json:"role" bson:"role"`
+	PhotoURL                string   `json:"photo_url" bson:"photo_url"`
+	SecurityQuestionAnswers []string `json:"security_question_answers"`
 }
 
 type User struct {
@@ -234,4 +248,8 @@ type EditStationInput struct {
 	Coordinates      [2]float64         `json:"coordinates"`
 	Address          string             `json:"address"`
 	OperationalHours [7][2]int64        `json:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
+}
+
+type OTPResponse struct {
+	Expiration int64 `json:"expiration"`
 }

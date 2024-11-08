@@ -50,18 +50,6 @@ func GetUser(filter bson.D) (User, error) {
 	return GetOne[User](USER_COLL, filter)
 }
 
-func CreateUser(username string, password string, email string, role string) (primitive.ObjectID, error) {
-	new_user := NewUser{
-		Username:           username,
-		Password:           password,
-		Email:              email,
-		Role:               role,
-		PhotoURL:           "",
-		FavoriteStationIDs: []string{},
-	}
-	return CreateOne(USER_COLL, new_user)
-}
-
 func UpdateUser(filter bson.D, update bson.D) error {
 	return UpdateOne(USER_COLL, filter, update)
 }
