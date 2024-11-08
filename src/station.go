@@ -193,6 +193,12 @@ func HandleClosestStations(c *gin.Context) {
 		bson.D{
 			{"$match", bson.D{
 				{"is_public", true},
+				{"$expr", bson.D{
+					{"$gte", bson.A{
+						bson.D{{"$divide", bson.A{"$review_score", "$review_count"}}},
+						body_data.MinRating,
+					}},
+				}},
 			}},
 		},
 	}

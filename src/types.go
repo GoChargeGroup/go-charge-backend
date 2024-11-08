@@ -43,6 +43,7 @@ type FindStationsInput struct {
 	MaxRadius    float64    `json:"max_radius"`
 	MaxResults   int64      `json:"max_results"`
 	Coordinates  [2]float64 `json:"coordinates"`
+	MinRating    float64    `json:"min_rating"`
 }
 
 type UnapprovedStationsOutput struct {
