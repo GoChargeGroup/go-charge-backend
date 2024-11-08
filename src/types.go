@@ -132,6 +132,17 @@ type NewChargerInput struct {
 	Price          float64 `json:"price"`
 }
 
+type NewCharger struct {
+	StationID      primitive.ObjectID `json:"station_id" bson:"station_id"`
+	Name           string             `json:"name" bson:"name"`
+	Description    string             `json:"description" bson:"description"`
+	KWhTypesId     string             `json:"kWh_types_id" bson:"kWh_types_id"`
+	ChargerTypesId string             `json:"charger_types_id" bson:"charger_types_id"`
+	Status         string             `json:"status" bson:"status"`
+	Price          float64            `json:"price" bson:"price"`
+	TotalPayments  float64            `json:"total_payments" bson:"total_payments"`
+}
+
 type Charger struct {
 	ID             primitive.ObjectID `json:"_id" bson:"_id"`
 	StationID      primitive.ObjectID `json:"station_id" bson:"station_id"`
@@ -193,4 +204,24 @@ type Review struct {
 
 type GetStationReviewsInput struct {
 	StationID primitive.ObjectID `json:"station_id" bson:"station_id"`
+}
+
+type AddChargerInput struct {
+	StationID      primitive.ObjectID `json:"station_id"`
+	Name           string             `json:"name"`
+	Description    string             `json:"description"`
+	KWhTypesId     string             `json:"kWh_types_id"`
+	ChargerTypesId string             `json:"charger_types_id"`
+	Price          float64            `json:"price"`
+}
+
+type EditChargerInput struct {
+	ID             primitive.ObjectID `json:"_id" bson:"_id"`
+	StationID      primitive.ObjectID `json:"station_id"` // NOTE: This is not editable, I just need it to make my life easier.
+	Name           string             `json:"name"`
+	Description    string             `json:"description"`
+	KWhTypesId     string             `json:"kWh_types_id"`
+	ChargerTypesId string             `json:"charger_types_id"`
+	Price          float64            `json:"price"`
+	Status         string             `json:"status"`
 }

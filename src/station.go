@@ -373,7 +373,7 @@ func HandleGetStationAndChargers(c *gin.Context) {
 		return
 	}
 
-	chargers, err := GetAll[Charger](bson.D{{"station_id", station_data.StationID}})
+	chargers, err := GetAll[Charger](CHARGER_COLL, bson.D{{"station_id", station_data.StationID}}, TRUE_MAX_RESULTS)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
