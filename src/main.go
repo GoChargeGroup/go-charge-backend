@@ -48,6 +48,10 @@ func InitOwnerRouter(router *gin.Engine) {
 	owner_router.POST("/request-station", HandleStationRequest)
 	owner_router.GET("/get-user-chargers", HandleGetUserChargers)
 	owner_router.POST("/station-and-chargers", HandleGetStationAndChargers)
+	owner_router.POST("/edit-station", HandleEditStation)
+
+	// charger routes
+	owner_router.POST("/edit-charger", HandleEditCharger)
 }
 
 func InitAdminRouter(router *gin.Engine) {

@@ -225,3 +225,13 @@ type EditChargerInput struct {
 	Price          float64            `json:"price"`
 	Status         string             `json:"status"`
 }
+
+type EditStationInput struct {
+	ID               primitive.ObjectID `json:"_id"`
+	PictureURLs      []string           `json:"picture_urls"`
+	Name             string             `json:"name"`
+	Description      string             `json:"description"`
+	Coordinates      [2]float64         `json:"coordinates"`
+	Address          string             `json:"address"`
+	OperationalHours [7][2]int64        `json:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
+}

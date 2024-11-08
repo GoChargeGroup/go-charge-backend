@@ -382,3 +382,48 @@ func HandleGetStationAndChargers(c *gin.Context) {
 	station_and_chargers := GetStationAndChargersOutput{station, chargers}
 	c.JSON(http.StatusOK, station_and_chargers)
 }
+
+func HandleEditStation(c *gin.Context) {
+	user_claim := c.MustGet(MW_USER_KEY).(UserClaim)
+	user_id, err := primitive.ObjectIDFromHex(user_claim.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	body_data, err := ReadBodyToStruct[EditStationInput](c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// edit station
+	err = UpdateOne(
+		STATION_COLL,
+		bson.D{
+			{"_id", body_data.ID},
+			{"owner_id", user_id}, // ensure owner owns this station
+		},
+		bson.D{
+			{"picture_urls", body_data.PictureURLs},
+			{"name", body_data.Name},
+			{"description", body_data.Description},
+			{"coordinates", body_data.Coordinates},
+			{"address", body_data.Address},
+			{"operational_hours", body_data.OperationalHours},
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// get and return updated station doc
+	station, err := GetStation(bson.D{{"_id", body_data.ID}})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, station)
+}
