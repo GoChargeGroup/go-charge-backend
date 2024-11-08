@@ -18,7 +18,7 @@ const SESSION_COLL = "Sessions"
 const STATION_COLL = "Stations"
 const USER_COLL = "Users"
 const CHARGER_COLL = "Chargers"
-const CHARGER_REVIEWS = "ChargerReviews"
+const REVIEW_COLL = "Reviews"
 
 // STATION WRAPPER FUNCTIONS
 

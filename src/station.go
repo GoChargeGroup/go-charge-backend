@@ -33,10 +33,12 @@ func HandleStationRequest(c *gin.Context) {
 		Name:             station_data.Name,
 		Description:      station_data.Description,
 		Coordinates:      station_data.Coordinates,
+		Address:          station_data.Address,
 		IsPublic:         false,
 		IsDenied:         false,
 		OperationalHours: station_data.OperationalHours,
-		Address:          station_data.Address,
+		ReviewCount:      0,
+		ReviewScore:      0,
 	}
 	station_id, err := CreateStation(new_station)
 	if mongo.IsDuplicateKeyError(err) {

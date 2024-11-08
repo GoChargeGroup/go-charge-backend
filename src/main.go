@@ -26,6 +26,11 @@ func InitUserRouter(router *gin.Engine) {
 	// session routes
 	user_router.POST("/start-session", HandleStartSession)
 	user_router.POST("/end-session", HandleEndSession)
+
+	// review routes
+	user_router.POST("/review-station", HandleReviewStation)
+	user_router.POST("/station-reviews", HandleGetStationReviews)
+	user_router.POST("/my-reviews", HandleGetMyReviews)
 }
 
 func InitOwnerRouter(router *gin.Engine) {

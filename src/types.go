@@ -72,6 +72,8 @@ type FindStationsOutput struct {
 	Chargers         []Charger          `json:"chargers" bson:"chargers"`
 	Distance         float64            `json:"distance" bson:"distance"`
 	IsDenied         bool               `json:"is_denied" bson:"is_denied"`
+	ReviewCount      int                `json:"review_count" bson:"review_count"`
+	ReviewScore      int                `json:"review_score" bson:"review_score"`
 }
 
 type ApprovedStationInput struct {
@@ -108,6 +110,8 @@ type Station struct {
 	IsPublic         bool               `json:"is_public" bson:"is_public"`
 	IsDenied         bool               `json:"is_denied" bson:"is_denied"`
 	OperationalHours [7][2]int64        `json:"operational_hours" bson:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
+	ReviewCount      int                `json:"review_count" bson:"review_count"`
+	ReviewScore      int                `json:"review_score" bson:"review_score"`
 }
 
 type NewChargerInput struct {
@@ -150,11 +154,33 @@ type Session struct {
 	PowerUsed      float64            `json:"power_used" bson:"power_used"`
 }
 
-// type ChargerReview struct {
-// 	ID         primitive.ObjectID `json:"_id"`
-// 	UserID     string             `json:"user_id"`
-// 	ChargerID  string             `json:"charger_id"`
-// 	PhotoURLs  []string           `json:"photo_urls"`
-// 	Rating     int                `json:"rating"`
-// 	Commentary string             `json:"commentary"`
-// }
+type NewReviewInput struct {
+	StationID  primitive.ObjectID `json:"station_id" bson:"station_id"`
+	ChargerID  primitive.ObjectID `json:"charger_id" bson:"charger_id"`
+	PhotoURLs  []string           `json:"photo_urls" bson:"photo_urls"`
+	Rating     int                `json:"rating" bson:"rating"`
+	Commentary string             `json:"commentary" bson:"commentary"`
+}
+
+type NewReview struct {
+	UserID     primitive.ObjectID `json:"user_id" bson:"user_id"`
+	StationID  primitive.ObjectID `json:"station_id" bson:"station_id"`
+	ChargerID  primitive.ObjectID `json:"charger_id" bson:"charger_id"`
+	PhotoURLs  []string           `json:"photo_urls" bson:"photo_urls"`
+	Rating     int                `json:"rating" bson:"rating"`
+	Commentary string             `json:"commentary" bson:"commentary"`
+}
+
+type Review struct {
+	ID         primitive.ObjectID `json:"_id" bson:"_id"`
+	UserID     primitive.ObjectID `json:"user_id" bson:"user_id"`
+	StationID  primitive.ObjectID `json:"station_id" bson:"station_id"`
+	ChargerID  primitive.ObjectID `json:"charger_id" bson:"charger_id"`
+	PhotoURLs  []string           `json:"photo_urls" bson:"photo_urls"`
+	Rating     int                `json:"rating" bson:"rating"`
+	Commentary string             `json:"commentary" bson:"commentary"`
+}
+
+type GetStationReviewsInput struct {
+	StationID primitive.ObjectID `json:"station_id" bson:"station_id"`
+}
