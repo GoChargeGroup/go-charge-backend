@@ -86,6 +86,15 @@ type FavoriteStationInput struct {
 	StationID string `json:"station_id" bson:"station_id"`
 }
 
+type GetStationAndChargersInput struct {
+	StationID string `json:"station_id" bson:"station_id"`
+}
+
+type GetStationAndChargersOutput struct {
+	Station  Station   `json:"station"`
+	Chargers []Charger `json:"chargers"`
+}
+
 type NewStationInput struct {
 	Name             string            `json:"name"`
 	Description      string            `json:"description"`

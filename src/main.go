@@ -22,6 +22,7 @@ func InitUserRouter(router *gin.Engine) {
 	user_router.POST("/closest-stations", HandleClosestStations)
 	user_router.POST("/favorite-station", HandleFavoriteStation)
 	user_router.POST("/unfavorite-station", HandleUnfavoriteStation)
+	user_router.POST("/station-and-chargers", HandleGetStationAndChargers)
 
 	// session routes
 	user_router.POST("/start-session", HandleStartSession)
@@ -46,6 +47,7 @@ func InitOwnerRouter(router *gin.Engine) {
 	// station routes
 	owner_router.POST("/request-station", HandleStationRequest)
 	owner_router.GET("/get-user-chargers", HandleGetUserChargers)
+	owner_router.POST("/station-and-chargers", HandleGetStationAndChargers)
 }
 
 func InitAdminRouter(router *gin.Engine) {

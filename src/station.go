@@ -359,3 +359,26 @@ func HandleGetUserChargers(c *gin.Context) {
 
 	c.JSON(http.StatusOK, stations)
 }
+
+func HandleGetStationAndChargers(c *gin.Context) {
+	station_data, err := ReadBodyToStruct[GetStationAndChargersInput](c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	station, err := GetStation(bson.D{{"_id", station_data.StationID}})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	chargers, err := GetAll[Charger](bson.D{{"station_id", station_data.StationID}})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	station_and_chargers := GetStationAndChargersOutput{station, chargers}
+	c.JSON(http.StatusOK, station_and_chargers)
+}
