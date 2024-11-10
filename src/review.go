@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -30,6 +31,7 @@ func HandleReviewStation(c *gin.Context) {
 		PhotoURLs:  body_data.PhotoURLs,
 		Rating:     body_data.Rating,
 		Commentary: body_data.Commentary,
+		CreatedAt:  time.Now(),
 	}
 	review_id, err := CreateOne(REVIEW_COLL, new_review)
 	if err != nil {

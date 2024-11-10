@@ -10,6 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const JWT_KEY = "hi mom"
@@ -90,8 +92,27 @@ func AuthMiddleware(c *gin.Context, required_role string) {
 		return
 	}
 	if claims.User.Role != required_role {
-		msg := claims.User.Role + " cannot perform this action"
+		msg := claims.User.Role + "s cannot perform this action"
 		c.JSON(http.StatusUnauthorized, msg)
+		c.Abort()
+		return
+	}
+
+	user_id, err := primitive.ObjectIDFromHex(claims.User.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, "Invalid token user id")
+		c.Abort()
+		return
+	}
+
+	user, err := GetUser(bson.D{{"_id", user_id}})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		c.Abort()
+		return
+	}
+	if user.Email != claims.User.Email || user.Role != claims.User.Role || user.Username != claims.User.Username {
+		c.JSON(http.StatusUnauthorized, "Out-of-date authorization token")
 		c.Abort()
 		return
 	}
@@ -152,12 +173,10 @@ func (m OTPManager) GenOTP(user_id string) OTPData {
 func (m OTPManager) TryOTP(user_id string, otp_attempt string) error {
 	curr_time := time.Now().Unix()
 
-	otp_data, ok := m.id_map[user_id]
-	if !ok {
-		return errors.New("No OTP has been generated for this user")
+	otp_data, err := m.DeleteOTP(user_id)
+	if err != nil {
+		return err
 	}
-
-	delete(m.id_map, user_id) // no matter what, delete the OTP.
 
 	if curr_time >= otp_data.expiration {
 		return errors.New("OTP has expired")
@@ -166,4 +185,13 @@ func (m OTPManager) TryOTP(user_id string, otp_attempt string) error {
 		return errors.New("Incorrect OTP")
 	}
 	return nil
+}
+
+func (m OTPManager) DeleteOTP(user_id string) (OTPData, error) {
+	otp_data, ok := m.id_map[user_id]
+	if !ok {
+		return OTPData{}, errors.New("No OTP has been generated for this user")
+	}
+	delete(m.id_map, user_id)
+	return otp_data, nil
 }

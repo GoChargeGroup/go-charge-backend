@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 
@@ -98,10 +99,16 @@ func CreateOne(collection string, document interface{}) (primitive.ObjectID, err
 }
 
 func UpdateOne(collection string, filter interface{}, update interface{}) error {
-	_, err := mongoClient.
+	res, err := mongoClient.
 		Database("GoCharge").
 		Collection(collection).
 		UpdateOne(context.TODO(), filter, update)
+	if res.MatchedCount == 0 {
+		return errors.New("No record found to update")
+	}
+	if res.ModifiedCount == 0 {
+		return errors.New("No records modified")
+	}
 	return err
 }
 

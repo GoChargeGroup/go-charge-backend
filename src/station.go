@@ -36,6 +36,7 @@ func HandleStationRequest(c *gin.Context) {
 		Address:          station_data.Address,
 		IsPublic:         false,
 		IsDenied:         false,
+		IsDisabled:       false,
 		OperationalHours: station_data.OperationalHours,
 		ReviewCount:      0,
 		ReviewScore:      0,
@@ -193,6 +194,7 @@ func HandleClosestStations(c *gin.Context) {
 		bson.D{
 			{"$match", bson.D{
 				{"is_public", true},
+				{"is_disabled", false},
 				{"$expr", bson.D{
 					{"$gte", bson.A{
 						bson.D{{"$divide", bson.A{"$review_score", "$review_count"}}},
@@ -412,6 +414,7 @@ func HandleEditStation(c *gin.Context) {
 				{"coordinates", body_data.Coordinates},
 				{"address", body_data.Address},
 				{"operational_hours", body_data.OperationalHours},
+				{"is_disabled", body_data.IsDisabled},
 			}},
 		},
 	)

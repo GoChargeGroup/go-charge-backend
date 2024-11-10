@@ -146,7 +146,7 @@ func HandleEditEmail(c *gin.Context) {
 		return
 	}
 	if body_data.NewEmail == user_claim.Email {
-		c.JSON(http.StatusConflict, "Cannot use the same email.")
+		c.JSON(http.StatusConflict, "Cannot use the same email")
 		return
 	}
 
@@ -211,6 +211,10 @@ func HandleEditUsername(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 		return
 	}
+	if user_claim.Username == new_username {
+		c.JSON(http.StatusBadRequest, "Cannot use the same username")
+		return
+	}
 
 	// try otp
 	err = otp_manager.TryOTP(user_claim.ID, otp)
@@ -261,6 +265,7 @@ func HandleEditUsernameRequest(c *gin.Context) {
 	msg := FormMessageBody(user_claim.Username, otp_data.otp, action, title)
 	err := SendEmail(user_claim.Email, msg, subject)
 	if err != nil {
+		otp_manager.DeleteOTP(user_claim.ID) // if we error, make sure the otp is dead
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -318,6 +323,7 @@ func HandleDeleteAccountRequest(c *gin.Context) {
 	msg := FormMessageBody(user_claim.Username, otp_data.otp, action, title)
 	err = SendEmail(user_claim.Email, msg, subject)
 	if err != nil {
+		otp_manager.DeleteOTP(user_claim.ID) // if we error, make sure the otp is dead
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -395,6 +401,7 @@ func HandlePasswordResetRequest(c *gin.Context) {
 	msg := FormMessageBody(user.Username, otp_data.otp, action, title)
 	err = SendEmail(user.Email, msg, subject)
 	if err != nil {
+		otp_manager.DeleteOTP(user.ID) // if we error, make sure the otp is dead
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}

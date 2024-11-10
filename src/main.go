@@ -13,7 +13,9 @@ func InitUserRouter(router *gin.Engine) {
 	user_router.Use(BuildAuthMiddleware(USER_ROLE))
 
 	// account routes
-	user_router.POST("/edit-account", HandleEditAccount)
+	user_router.POST("/edit-email", HandleEditEmail)
+	user_router.POST("/edit-username", HandleEditUsername)
+	user_router.POST("/edit-username-request", HandleEditUsernameRequest)
 	user_router.POST("/delete-account", HandleDeleteAccount)
 	user_router.POST("/delete-account-request", HandleDeleteAccountRequest)
 	user_router.POST("/logout", HandleLogout)
@@ -39,7 +41,9 @@ func InitOwnerRouter(router *gin.Engine) {
 	owner_router.Use(BuildAuthMiddleware(OWNER_ROLE))
 
 	// account routes
-	owner_router.POST("/edit-account", HandleEditAccount)
+	owner_router.POST("/edit-email", HandleEditEmail)
+	owner_router.POST("/edit-username", HandleEditUsername)
+	owner_router.POST("/edit-username-request", HandleEditUsernameRequest)
 	owner_router.POST("/delete-account", HandleDeleteAccount)
 	owner_router.POST("/delete-account-request", HandleDeleteAccountRequest)
 	owner_router.POST("/logout", HandleLogout)
@@ -51,6 +55,7 @@ func InitOwnerRouter(router *gin.Engine) {
 	owner_router.POST("/edit-station", HandleEditStation)
 
 	// charger routes
+	owner_router.POST("/add-charger", HandleAddCharger)
 	owner_router.POST("/edit-charger", HandleEditCharger)
 }
 
@@ -72,7 +77,7 @@ func RunPublicVersion() {
 	router := gin.Default()
 	router.Use(CORSMiddleware())
 
-	router.GET("/signup", HandleSignup)
+	router.POST("/signup", HandleSignup)
 	router.GET("/login", HandleLogin)
 	router.POST("/password-reset-request", HandlePasswordResetRequest)
 	router.POST("/password-reset", HandlePasswordReset)

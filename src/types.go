@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -37,7 +39,7 @@ type NewUser struct {
 	Email                   string   `json:"email" bson:"email"`
 	Role                    string   `json:"role" bson:"role"`
 	PhotoURL                string   `json:"photo_url" bson:"photo_url"`
-	SecurityQuestionAnswers []string `json:"security_question_answers"`
+	SecurityQuestionAnswers []string `json:"security_question_answers" bson:"security_question_answers"`
 }
 
 type User struct {
@@ -82,11 +84,9 @@ type FindStationsOutput struct {
 	Description      string             `json:"description" bson:"description"`
 	Coordinates      [2]float64         `json:"coordinates" bson:"coordinates"`
 	Address          string             `json:"address" bson:"address"`
-	IsPublic         bool               `json:"is_public" bson:"is_public"`
 	OperationalHours [7][2]int64        `json:"operational_hours" bson:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
 	Chargers         []Charger          `json:"chargers" bson:"chargers"`
 	Distance         float64            `json:"distance" bson:"distance"`
-	IsDenied         bool               `json:"is_denied" bson:"is_denied"`
 	ReviewCount      int                `json:"review_count" bson:"review_count"`
 	ReviewScore      int                `json:"review_score" bson:"review_score"`
 }
@@ -101,7 +101,7 @@ type FavoriteStationInput struct {
 }
 
 type GetStationAndChargersInput struct {
-	StationID string `json:"station_id" bson:"station_id"`
+	StationID primitive.ObjectID `json:"station_id" bson:"station_id"`
 }
 
 type GetStationAndChargersOutput struct {
@@ -133,6 +133,7 @@ type Station struct {
 	Address          string             `json:"address" bson:"address"`
 	IsPublic         bool               `json:"is_public" bson:"is_public"`
 	IsDenied         bool               `json:"is_denied" bson:"is_denied"`
+	IsDisabled       bool               `json:"is_disabled" bson:"is_disabled"`
 	OperationalHours [7][2]int64        `json:"operational_hours" bson:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
 	ReviewCount      int                `json:"review_count" bson:"review_count"`
 	ReviewScore      int                `json:"review_score" bson:"review_score"`
@@ -204,6 +205,7 @@ type NewReview struct {
 	PhotoURLs  []string           `json:"photo_urls" bson:"photo_urls"`
 	Rating     int                `json:"rating" bson:"rating"`
 	Commentary string             `json:"commentary" bson:"commentary"`
+	CreatedAt  time.Time          `json:"created_at" bson:"created_at"`
 }
 
 type Review struct {
@@ -214,6 +216,7 @@ type Review struct {
 	PhotoURLs  []string           `json:"photo_urls" bson:"photo_urls"`
 	Rating     int                `json:"rating" bson:"rating"`
 	Commentary string             `json:"commentary" bson:"commentary"`
+	CreatedAt  time.Time          `json:"created_at" bson:"created_at"`
 }
 
 type GetStationReviewsInput struct {
@@ -248,6 +251,7 @@ type EditStationInput struct {
 	Coordinates      [2]float64         `json:"coordinates"`
 	Address          string             `json:"address"`
 	OperationalHours [7][2]int64        `json:"operational_hours"` // format: [days of week][start, end]sec_since_start_of_UNIX_day
+	IsDisabled       bool               `json:"is_disabled"`
 }
 
 type OTPResponse struct {
