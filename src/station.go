@@ -197,9 +197,17 @@ func HandleClosestStations(c *gin.Context) {
 				{"is_disabled", false},
 				{"$expr", bson.D{
 					{"$gte", bson.A{
-						bson.D{{"$divide", bson.A{"$review_score", "$review_count"}}},
-						body_data.MinRating,
+						"$review_score",
+						bson.D{{"$multiply", bson.A{body_data.MinRating, "$review_count"}}},
 					}},
+				}},
+				{"$or", bson.A{
+					bson.D{{"$expr", bson.D{
+						{"$eq", bson.A{body_data.MinRating, 0}},
+					}}},
+					bson.D{{"$expr", bson.D{
+						{"$ne", bson.A{"$review_count", 0}},
+					}}},
 				}},
 			}},
 		},
