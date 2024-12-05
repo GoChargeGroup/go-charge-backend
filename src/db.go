@@ -103,6 +103,9 @@ func UpdateOne(collection string, filter interface{}, update interface{}) error 
 		Database("GoCharge").
 		Collection(collection).
 		UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		return err
+	}
 	if res.MatchedCount == 0 {
 		return errors.New("No record found to update")
 	}
